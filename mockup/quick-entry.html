@@ -361,12 +361,12 @@
       <div class="brush-group">
         <button class="brush-btn ind active" data-brush="ind" onclick="setBrush('ind')" title="Behavior occurred (this cell only)">IND</button>
         <button class="brush-btn err" data-brush="err" onclick="setBrush('err')" title="Observed, no behavior (fills row)">ERR (row)</button>
-        <button class="brush-btn skip" data-brush="skip" onclick="setBrush('skip')" title="Not observed (fills row)">Skip (row)</button>
+        <button class="brush-btn skip" data-brush="skip" onclick="setBrush('skip')" title="Not observed (fills row)">Blank (row)</button>
         <button class="brush-btn clear" data-brush="empty" onclick="setBrush('empty')" title="Clear cell">Clear</button>
       </div>
       <span style="border-left: 1px solid #ddd; height: 24px; margin: 0 8px;"></span>
       <button class="action-btn" onclick="fillAllERR()" style="background:#ffebee;color:#c62828;padding:8px 12px;font-size:12px;">Fill All ERR</button>
-      <button class="action-btn" onclick="fillAllSkip()" style="background:#f5f5f5;color:#666;padding:8px 12px;font-size:12px;">Fill All Skip</button>
+      <button class="action-btn" onclick="fillAllSkip()" style="background:#f5f5f5;color:#666;padding:8px 12px;font-size:12px;">Fill All Blank</button>
       <span class="selection-info" id="selectionInfo" style="margin-left:auto;">Click and drag to fill cells</span>
     </div>
 
@@ -671,7 +671,10 @@
         let entries = [];
 
         for (let row = 0; row < numIntervals; row++) {
-          const val = grid[row][col];
+          let val = grid[row][col];
+          // Treat empty as skip (blank = not observed)
+          if (val === 'empty') val = 'skip';
+
           const time = formatTime(row);
           if (val === 'ind') {
             entries.push(`${time}: IND`);
