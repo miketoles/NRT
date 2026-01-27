@@ -266,17 +266,9 @@
     }
 
     .data-cell.ind {
-      background:
-        repeating-linear-gradient(
-          -45deg,
-          #1a73e8 0px,
-          #1a73e8 2px,
-          #e3f2fd 2px,
-          #e3f2fd 6px
-        );
-      color: #0d47a1;
-      font-weight: bold;
-      text-shadow: 0 0 2px white, 0 0 2px white, 0 0 2px white;
+      background-color: #e8e8e8;
+      background-image: url("data:image/svg+xml,%3Csvg width='20' height='20' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 3 Q5 0 10 3 T20 3 M0 8 Q5 5 10 8 T20 8 M0 13 Q5 10 10 13 T20 13 M0 18 Q5 15 10 18 T20 18' stroke='%23666' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+      background-size: 20px 20px;
     }
 
     .data-cell.err {
@@ -388,7 +380,7 @@
     <div class="instructions">
       <strong>How to use:</strong>
       <strong>✓ Check</strong> = observed, no behavior (fills row) |
-      <strong>▓ Shaded</strong> = behavior occurred (this cell, others become ✓) |
+      <strong>Shaded</strong> = behavior occurred (this cell, others become ✓) |
       <strong style="color:#e53935;">✗ Skip</strong> = not observed (fills row).
       Click+drag to fill. Keys: <kbd>I</kbd> <kbd>E</kbd> <kbd>S</kbd> <kbd>C</kbd>
     </div>
@@ -396,7 +388,7 @@
     <div class="toolbar">
       <span class="brush-label">Brush:</span>
       <div class="brush-group">
-        <button class="brush-btn ind active" data-brush="ind" onclick="setBrush('ind')" title="Behavior occurred (this cell only)">▓ Shaded</button>
+        <button class="brush-btn ind active" data-brush="ind" onclick="setBrush('ind')" title="Behavior occurred (this cell only)">Shaded</button>
         <button class="brush-btn err" data-brush="err" onclick="setBrush('err')" title="Observed, no behavior (fills row)">✓ Check (row)</button>
         <button class="brush-btn skip" data-brush="skip" onclick="setBrush('skip')" title="Not observed (fills row)">✗ Skip (row)</button>
         <button class="brush-btn clear" data-brush="empty" onclick="setBrush('empty')" title="Clear cell">Clear</button>
@@ -740,7 +732,7 @@
       cell.className = 'data-cell ' + value;
       switch (value) {
         case 'ind':
-          cell.textContent = '▓';  // Shaded
+          cell.textContent = '';  // Shaded pattern only, no text
           break;
         case 'err':
           cell.textContent = '✓';  // Check mark
