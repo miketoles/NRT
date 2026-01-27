@@ -550,6 +550,7 @@
     // Track what action to apply during check column drag
     let checkDragAction = null;
     let startCheckRow = null;
+    let isCheckFormatPainting = false;
 
     // Handle click on check column
     function handleCheckClick(e) {
@@ -557,23 +558,28 @@
       const row = parseInt(e.target.dataset.row);
       startCheckRow = row;
 
-      // Determine drag action based on current state
-      const currentStatus = rowStatus[row];
-      if (currentStatus === 'skipped') {
-        // Clicking on red X - drag will apply red X
-        checkDragAction = 'skip';
-      } else if (currentStatus === 'checked') {
-        // Clicking on check - drag will apply check
-        checkDragAction = 'check';
-      } else {
-        // Clicking on empty - cycle as normal, drag will apply new state
-        checkDragAction = 'cycle';
+      // If row has IND, don't allow check column interaction
+      if (hasAnyIND(row)) {
+        e.preventDefault();
+        return;
       }
 
-      toggleRowCheck(row);
-
-      // Update drag action to match what we just set
-      if (checkDragAction === 'cycle') {
+      // Determine drag action based on current state (format painter)
+      const currentStatus = rowStatus[row];
+      if (currentStatus === 'skipped') {
+        // Clicking on red X - pick up red X, don't change
+        checkDragAction = 'skip';
+        isCheckFormatPainting = true;
+      } else if (currentStatus === 'checked') {
+        // Clicking on check - pick up check, don't change
+        checkDragAction = 'check';
+        isCheckFormatPainting = true;
+      } else {
+        // Clicking on empty - cycle as normal
+        checkDragAction = null;
+        isCheckFormatPainting = false;
+        toggleRowCheck(row);
+        // Set drag action to match what we just set
         checkDragAction = rowStatus[row] === 'checked' ? 'check' : (rowStatus[row] === 'skipped' ? 'skip' : null);
       }
 
@@ -636,8 +642,9 @@
       updateTotals();
     }
 
-    // Track the brush used for current drag operation
+    // Track the brush used for current drag operation (format painter)
     let dragBrush = null;
+    let isFormatPainting = false;
 
     // Handle mouse events for click+drag
     function handleMouseDown(e) {
@@ -646,19 +653,24 @@
       const col = parseInt(e.target.dataset.col);
       startCell = { row, col };
 
-      // If clicking on an already-filled cell, use that value for the drag
+      // Check if clicking on an already-filled cell (format painter mode)
       const cellValue = grid[row][col];
       if (cellValue === 'skip') {
         dragBrush = 'skip';
+        isFormatPainting = true;
       } else if (cellValue === 'ind') {
         dragBrush = 'ind';
+        isFormatPainting = true;
       } else if (cellValue === 'err' || rowStatus[row] === 'checked') {
         dragBrush = 'err';
+        isFormatPainting = true;
       } else {
+        // Empty cell - use selected brush and apply immediately
         dragBrush = currentBrush;
+        isFormatPainting = false;
+        applyBrushWithOverride(e.target, dragBrush);
       }
 
-      applyBrushWithOverride(e.target, dragBrush);
       e.preventDefault();
     }
 
@@ -672,6 +684,7 @@
       isMouseDown = false;
       startCell = null;
       dragBrush = null;
+      isFormatPainting = false;
     }
 
     // Apply brush to a cell (with optional override)
@@ -963,6 +976,8 @@
       startCheckRow = null;
       dragBrush = null;
       checkDragAction = null;
+      isFormatPainting = false;
+      isCheckFormatPainting = false;
     });
 
     // Initialize
