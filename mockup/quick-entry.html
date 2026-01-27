@@ -140,13 +140,13 @@
     }
 
     .brush-btn.skip {
-      color: #9e9e9e;
+      color: #e53935;
     }
 
     .brush-btn.skip.active, .brush-btn.skip:hover {
-      background: #f5f5f5;
-      border-color: #9e9e9e;
-      color: #666;
+      background: #ffebee;
+      border-color: #e53935;
+      color: #c62828;
     }
 
     .brush-btn.clear {
@@ -262,8 +262,10 @@
     }
 
     .data-cell.skip {
-      background: #fafafa;
-      color: #ccc;
+      background: #fff5f5;
+      color: #e53935;
+      font-size: 14px;
+      font-weight: bold;
     }
 
     .data-cell.selecting {
@@ -363,8 +365,8 @@
       <strong>How to use:</strong>
       <strong>✓ Check</strong> = observed, no behavior (fills row) |
       <strong>▓ Shaded</strong> = behavior occurred (this cell, others become ✓) |
-      <strong>Blank</strong> = not observed (fills row).
-      Click+drag to fill quickly. Keys: <kbd>I</kbd> <kbd>E</kbd> <kbd>S</kbd> <kbd>C</kbd>
+      <strong style="color:#e53935;">✗ Skip</strong> = not observed (fills row).
+      Click+drag to fill. Keys: <kbd>I</kbd> <kbd>E</kbd> <kbd>S</kbd> <kbd>C</kbd>
     </div>
 
     <div class="toolbar">
@@ -372,12 +374,12 @@
       <div class="brush-group">
         <button class="brush-btn ind active" data-brush="ind" onclick="setBrush('ind')" title="Behavior occurred (this cell only)">▓ Shaded</button>
         <button class="brush-btn err" data-brush="err" onclick="setBrush('err')" title="Observed, no behavior (fills row)">✓ Check (row)</button>
-        <button class="brush-btn skip" data-brush="skip" onclick="setBrush('skip')" title="Not observed (fills row)">Blank (row)</button>
+        <button class="brush-btn skip" data-brush="skip" onclick="setBrush('skip')" title="Not observed (fills row)">✗ Skip (row)</button>
         <button class="brush-btn clear" data-brush="empty" onclick="setBrush('empty')" title="Clear cell">Clear</button>
       </div>
       <span style="border-left: 1px solid #ddd; height: 24px; margin: 0 8px;"></span>
       <button class="action-btn" onclick="fillAllERR()" style="background:#f0f0f0;color:#333;padding:8px 12px;font-size:12px;">Fill All ✓</button>
-      <button class="action-btn" onclick="fillAllSkip()" style="background:#f5f5f5;color:#666;padding:8px 12px;font-size:12px;">Fill All Blank</button>
+      <button class="action-btn" onclick="fillAllSkip()" style="background:#ffebee;color:#c62828;padding:8px 12px;font-size:12px;">Fill All ✗</button>
       <span class="selection-info" id="selectionInfo" style="margin-left:auto;">Click and drag to fill cells</span>
     </div>
 
@@ -585,10 +587,10 @@
           cell.textContent = '✓';  // Check mark
           break;
         case 'skip':
-          cell.textContent = '';   // Blank
+          cell.textContent = '✗';   // Red X for skipped
           break;
         default:
-          cell.textContent = '';   // Empty
+          cell.textContent = '';   // Empty (unfilled)
       }
     }
 
