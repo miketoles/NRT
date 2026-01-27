@@ -524,6 +524,7 @@
         checkCell.dataset.type = 'check';
         checkCell.addEventListener('mousedown', handleCheckClick);
         checkCell.addEventListener('mouseenter', handleCheckDrag);
+        checkCell.addEventListener('mouseup', handleCheckMouseUp);
         checkTd.appendChild(checkCell);
         tr.appendChild(checkTd);
 
@@ -550,13 +551,16 @@
     // Track what action to apply during check column drag
     let checkDragAction = null;
     let startCheckRow = null;
-    let isCheckFormatPainting = false;
+    let hasCheckDragged = false;
+    let startCheckElement = null;
 
     // Handle click on check column
     function handleCheckClick(e) {
       isMouseDown = true;
+      hasCheckDragged = false;
       const row = parseInt(e.target.dataset.row);
       startCheckRow = row;
+      startCheckElement = e.target;
 
       // If row has IND, don't allow check column interaction
       if (hasAnyIND(row)) {
@@ -567,20 +571,12 @@
       // Determine drag action based on current state (format painter)
       const currentStatus = rowStatus[row];
       if (currentStatus === 'skipped') {
-        // Clicking on red X - pick up red X, don't change
         checkDragAction = 'skip';
-        isCheckFormatPainting = true;
       } else if (currentStatus === 'checked') {
-        // Clicking on check - pick up check, don't change
         checkDragAction = 'check';
-        isCheckFormatPainting = true;
       } else {
-        // Clicking on empty - cycle as normal
-        checkDragAction = null;
-        isCheckFormatPainting = false;
-        toggleRowCheck(row);
-        // Set drag action to match what we just set
-        checkDragAction = rowStatus[row] === 'checked' ? 'check' : (rowStatus[row] === 'skipped' ? 'skip' : null);
+        // Empty - will become check on click
+        checkDragAction = 'check';
       }
 
       e.preventDefault();
@@ -589,11 +585,11 @@
     // Handle drag on check column
     function handleCheckDrag(e) {
       if (isMouseDown && checkDragAction) {
+        hasCheckDragged = true;
         const row = parseInt(e.target.dataset.row);
         if (hasAnyIND(row)) return; // Don't modify rows with shaded behaviors
 
         if (checkDragAction === 'skip' && rowStatus[row] !== 'skipped') {
-          // Apply skip to this row
           rowStatus[row] = 'skipped';
           for (let col = 0; col < numBehaviors; col++) {
             grid[row][col] = 'skip';
@@ -601,7 +597,6 @@
           updateRowDisplayNew(row);
           updateTotals();
         } else if (checkDragAction === 'check' && rowStatus[row] !== 'checked') {
-          // Apply check to this row
           rowStatus[row] = 'checked';
           for (let col = 0; col < numBehaviors; col++) {
             grid[row][col] = 'err';
@@ -610,6 +605,35 @@
           updateTotals();
         }
       }
+    }
+
+    // Handle mouseup on check column - toggle if no drag
+    function handleCheckMouseUp(e) {
+      if (!hasCheckDragged && startCheckElement) {
+        const row = parseInt(startCheckElement.dataset.row);
+        if (!hasAnyIND(row)) {
+          toggleCheckColumn(row);
+        }
+      }
+    }
+
+    // Toggle check column between ✓ and ✗
+    function toggleCheckColumn(row) {
+      if (rowStatus[row] === 'checked') {
+        // Check → Red X
+        rowStatus[row] = 'skipped';
+        for (let col = 0; col < numBehaviors; col++) {
+          grid[row][col] = 'skip';
+        }
+      } else {
+        // Red X or empty → Check
+        rowStatus[row] = 'checked';
+        for (let col = 0; col < numBehaviors; col++) {
+          grid[row][col] = 'err';
+        }
+      }
+      updateRowDisplayNew(row);
+      updateTotals();
     }
 
     // Cycle check column: empty → ✓ → ✗ → empty
@@ -644,31 +668,29 @@
 
     // Track the brush used for current drag operation (format painter)
     let dragBrush = null;
-    let isFormatPainting = false;
+    let hasDragged = false;
+    let startCellElement = null;
 
     // Handle mouse events for click+drag
     function handleMouseDown(e) {
       isMouseDown = true;
+      hasDragged = false;
       const row = parseInt(e.target.dataset.row);
       const col = parseInt(e.target.dataset.col);
       startCell = { row, col };
+      startCellElement = e.target;
 
-      // Check if clicking on an already-filled cell (format painter mode)
+      // Determine what brush to use for dragging (format painter)
       const cellValue = grid[row][col];
       if (cellValue === 'skip') {
         dragBrush = 'skip';
-        isFormatPainting = true;
       } else if (cellValue === 'ind') {
         dragBrush = 'ind';
-        isFormatPainting = true;
       } else if (cellValue === 'err' || rowStatus[row] === 'checked') {
         dragBrush = 'err';
-        isFormatPainting = true;
       } else {
-        // Empty cell - use selected brush and apply immediately
-        dragBrush = currentBrush;
-        isFormatPainting = false;
-        applyBrushWithOverride(e.target, dragBrush);
+        // Empty cell - will toggle to shaded on click, or use for painting
+        dragBrush = 'ind';
       }
 
       e.preventDefault();
@@ -676,15 +698,44 @@
 
     function handleMouseEnter(e) {
       if (isMouseDown && dragBrush) {
+        hasDragged = true;
         applyBrushWithOverride(e.target, dragBrush);
       }
     }
 
     function handleMouseUp(e) {
+      // If no drag happened, this was a click - toggle the cell
+      if (!hasDragged && startCellElement) {
+        const row = parseInt(startCellElement.dataset.row);
+        const col = parseInt(startCellElement.dataset.col);
+        toggleBehaviorCell(row, col);
+      }
+
       isMouseDown = false;
       startCell = null;
+      startCellElement = null;
       dragBrush = null;
-      isFormatPainting = false;
+      hasDragged = false;
+    }
+
+    // Toggle behavior cell between shaded and blank
+    function toggleBehaviorCell(row, col) {
+      if (grid[row][col] === 'ind') {
+        // Shaded → blank (ERR since row was observed)
+        grid[row][col] = 'err';
+      } else {
+        // Blank/empty/ERR → shaded
+        grid[row][col] = 'ind';
+        rowStatus[row] = 'checked';
+        // Other cells become ERR if empty
+        for (let c = 0; c < numBehaviors; c++) {
+          if (c !== col && (grid[row][c] === 'empty' || grid[row][c] === 'skip')) {
+            grid[row][c] = 'err';
+          }
+        }
+      }
+      updateRowDisplayNew(row);
+      updateTotals();
     }
 
     // Apply brush to a cell (with optional override)
@@ -976,8 +1027,10 @@
       startCheckRow = null;
       dragBrush = null;
       checkDragAction = null;
-      isFormatPainting = false;
-      isCheckFormatPainting = false;
+      hasDragged = false;
+      hasCheckDragged = false;
+      startCellElement = null;
+      startCheckElement = null;
     });
 
     // Initialize
