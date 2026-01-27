@@ -598,45 +598,68 @@
       updateTotals();
     }
 
+    // Track the brush used for current drag operation
+    let dragBrush = null;
+
     // Handle mouse events for click+drag
     function handleMouseDown(e) {
       isMouseDown = true;
-      startCell = { row: parseInt(e.target.dataset.row), col: parseInt(e.target.dataset.col) };
-      applyBrush(e.target);
+      const row = parseInt(e.target.dataset.row);
+      const col = parseInt(e.target.dataset.col);
+      startCell = { row, col };
+
+      // If clicking on an already-filled cell, use that value for the drag
+      const cellValue = grid[row][col];
+      if (cellValue === 'skip') {
+        dragBrush = 'skip';
+      } else if (cellValue === 'ind') {
+        dragBrush = 'ind';
+      } else if (cellValue === 'err' || rowStatus[row] === 'checked') {
+        dragBrush = 'err';
+      } else {
+        dragBrush = currentBrush;
+      }
+
+      applyBrushWithOverride(e.target, dragBrush);
       e.preventDefault();
     }
 
     function handleMouseEnter(e) {
-      if (isMouseDown) {
-        applyBrush(e.target);
+      if (isMouseDown && dragBrush) {
+        applyBrushWithOverride(e.target, dragBrush);
       }
     }
 
     function handleMouseUp(e) {
       isMouseDown = false;
       startCell = null;
+      dragBrush = null;
     }
 
-    // Apply current brush to a cell
+    // Apply brush to a cell (with optional override)
     function applyBrush(cell) {
+      applyBrushWithOverride(cell, currentBrush);
+    }
+
+    function applyBrushWithOverride(cell, brush) {
       const row = parseInt(cell.dataset.row);
       const col = parseInt(cell.dataset.col);
 
-      if (currentBrush === 'err') {
+      if (brush === 'err') {
         // ERR = observed entire interval, no behaviors → check the row
         rowStatus[row] = 'checked';
         for (let c = 0; c < numBehaviors; c++) {
           grid[row][c] = 'err';
         }
         updateRowDisplayNew(row);
-      } else if (currentBrush === 'skip') {
+      } else if (brush === 'skip') {
         // Skip = not observed → fill entire row with skip
         rowStatus[row] = 'skipped';
         for (let c = 0; c < numBehaviors; c++) {
           grid[row][c] = 'skip';
         }
         updateRowDisplayNew(row);
-      } else if (currentBrush === 'ind') {
+      } else if (brush === 'ind') {
         // IND = this specific behavior occurred
         if (grid[row][col] === 'ind') {
           // Already shaded - toggle it off (back to ERR since row was observed)
@@ -900,6 +923,7 @@
     document.addEventListener('mouseup', () => {
       isMouseDown = false;
       startCheckRow = null;
+      dragBrush = null;
     });
 
     // Initialize
