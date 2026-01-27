@@ -638,14 +638,19 @@
         updateRowDisplayNew(row);
       } else if (currentBrush === 'ind') {
         // IND = this specific behavior occurred
-        // Mark this cell as IND
-        grid[row][col] = 'ind';
-        // Row is now checked (observed) with this behavior
-        rowStatus[row] = 'checked';
-        // Other cells in row that are empty or skip should become ERR (you were observing)
-        for (let c = 0; c < numBehaviors; c++) {
-          if (c !== col && (grid[row][c] === 'empty' || grid[row][c] === 'skip')) {
-            grid[row][c] = 'err';
+        if (grid[row][col] === 'ind') {
+          // Already shaded - toggle it off (back to ERR since row was observed)
+          grid[row][col] = 'err';
+        } else {
+          // Mark this cell as IND
+          grid[row][col] = 'ind';
+          // Row is now checked (observed) with this behavior
+          rowStatus[row] = 'checked';
+          // Other cells in row that are empty or skip should become ERR (you were observing)
+          for (let c = 0; c < numBehaviors; c++) {
+            if (c !== col && (grid[row][c] === 'empty' || grid[row][c] === 'skip')) {
+              grid[row][c] = 'err';
+            }
           }
         }
         updateRowDisplayNew(row);
