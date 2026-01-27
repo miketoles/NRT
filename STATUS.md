@@ -2,7 +2,7 @@
 
 ---
 
-**Project:** CentralReach API Integration
+**Project:** Scatterplot Quick Entry Tool
 **Last worked on:** January 27, 2026
 **Path:** `~/dev/CR`
 
@@ -10,7 +10,7 @@
 
 ## Current Status
 
-**Overall:** Exploratory - researching API capabilities
+**Overall:** Prototype complete - ready for user testing
 
 ---
 
@@ -18,36 +18,49 @@
 
 - [x] Researched CentralReach API documentation
 - [x] Documented authentication flow (OAuth 2.0, JWT tokens)
-- [x] Identified available API domains (Clients, Employees, Scheduling, Billing)
-- [x] Outlined potential integration ideas for hospital internal tools
+- [x] Identified primary use case: Scatterplot data entry tool
+- [x] Designed UI with click+drag interaction model
+- [x] Built working prototype: `mockup/quick-entry.html`
 
 ---
 
 ## What's Next
 
-- [ ] Identify who at hospital can request API access **START HERE**
-- [ ] Decide which use case to pursue first
-- [ ] Request API credentials (5-7 day turnaround)
-- [ ] Build proof-of-concept once credentials obtained
+- [ ] Test prototype with real workflow **START HERE**
+- [ ] Gather feedback on speed/usability
+- [ ] Identify improvements needed
+- [ ] Request CR API credentials for Phase 2 (direct submit)
 
 ---
 
 ## Blockers / Questions
 
-- **Blocker:** No API credentials yet - need CR organization admin to request access
-- **Question:** Who at the hospital has CR admin access?
+- **Testing needed:** Does the prototype work well with actual paper scatterplots?
+- **API access:** Still need credentials for direct CR submission (Phase 2)
 
 ---
 
-## Notes for Next Session
+## The Problem We're Solving
 
-This is exploratory for potential hospital internal tools. Ideas include:
-1. ScatterplotCreator sync (pull client list from CR)
-2. Scheduling dashboard
-3. Data export/reporting
-4. Mini-apps integration
+RBTs spend significant time transcribing paper scatterplots into CR:
+- 96 intervals × 1-4 behaviors per client
+- Must click each cell individually in CR
+- Multiple passes (one per behavior)
+- Error-prone (interpreting handwriting)
 
-API docs saved in `~/dev/CR/docs/`
+**Solution:** Quick Entry tool with click+drag to fill ranges fast.
+
+---
+
+## Prototype Location
+
+`~/dev/CR/mockup/quick-entry.html`
+
+Open in browser to test. Features:
+- Click+drag to paint cells
+- Keyboard shortcuts: I=IND, E=ERR, S=Skip, C=Clear
+- Auto-calculated totals
+- Copy for CR button
 
 ---
 

@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scatterplot Quick Entry - Mockup</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f5f5f5;
+      padding: 20px;
+      user-select: none;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+
+    .header {
+      background: #1a73e8;
+      color: white;
+      padding: 16px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header h1 {
+      font-size: 18px;
+      font-weight: 500;
+    }
+
+    .submit-btn {
+      background: #34a853;
+      color: white;
+      border: none;
+      padding: 10px 24px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    .submit-btn:hover {
+      background: #2d9249;
+    }
+
+    .patient-info {
+      padding: 16px 20px;
+      background: #f8f9fa;
+      border-bottom: 1px solid #e0e0e0;
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .info-field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .info-field label {
+      font-size: 11px;
+      color: #666;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+
+    .info-field select, .info-field input {
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 14px;
+      min-width: 150px;
+    }
+
+    .toolbar {
+      padding: 12px 20px;
+      background: #fff;
+      border-bottom: 1px solid #e0e0e0;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .brush-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #333;
+    }
+
+    .brush-group {
+      display: flex;
+      gap: 4px;
+    }
+
+    .brush-btn {
+      padding: 8px 16px;
+      border: 2px solid #ddd;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      background: white;
+      transition: all 0.15s;
+    }
+
+    .brush-btn.ind {
+      color: #1a73e8;
+    }
+
+    .brush-btn.ind.active, .brush-btn.ind:hover {
+      background: #1a73e8;
+      border-color: #1a73e8;
+      color: white;
+    }
+
+    .brush-btn.err {
+      color: #ea4335;
+    }
+
+    .brush-btn.err.active, .brush-btn.err:hover {
+      background: #ea4335;
+      border-color: #ea4335;
+      color: white;
+    }
+
+    .brush-btn.skip {
+      color: #9e9e9e;
+    }
+
+    .brush-btn.skip.active, .brush-btn.skip:hover {
+      background: #9e9e9e;
+      border-color: #9e9e9e;
+      color: white;
+    }
+
+    .brush-btn.clear {
+      color: #666;
+    }
+
+    .brush-btn.clear:hover {
+      background: #f5f5f5;
+    }
+
+    .selection-info {
+      margin-left: auto;
+      font-size: 13px;
+      color: #666;
+    }
+
+    .shortcuts {
+      font-size: 11px;
+      color: #999;
+    }
+
+    .shortcuts kbd {
+      background: #f0f0f0;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: monospace;
+    }
+
+    .grid-container {
+      padding: 16px 20px;
+      overflow-x: auto;
+    }
+
+    .grid-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    .grid-table th {
+      background: #f8f9fa;
+      padding: 10px 8px;
+      text-align: center;
+      font-weight: 600;
+      border: 1px solid #e0e0e0;
+      position: sticky;
+      top: 0;
+    }
+
+    .grid-table th.time-header {
+      text-align: left;
+      min-width: 100px;
+    }
+
+    .grid-table th.behavior-header {
+      min-width: 100px;
+    }
+
+    .grid-table td {
+      border: 1px solid #e0e0e0;
+      padding: 0;
+      text-align: center;
+    }
+
+    .grid-table td.time-cell {
+      padding: 6px 8px;
+      text-align: left;
+      background: #fafafa;
+      font-weight: 500;
+      font-size: 11px;
+      color: #555;
+    }
+
+    .data-cell {
+      width: 100%;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background 0.1s;
+      font-weight: 600;
+      font-size: 11px;
+    }
+
+    .data-cell:hover {
+      opacity: 0.8;
+    }
+
+    .data-cell.empty {
+      background: #fff;
+      color: #ccc;
+    }
+
+    .data-cell.ind {
+      background: #e8f5e9;
+      color: #1b5e20;
+    }
+
+    .data-cell.err {
+      background: #ffebee;
+      color: #c62828;
+    }
+
+    .data-cell.skip {
+      background: #f5f5f5;
+      color: #9e9e9e;
+    }
+
+    .data-cell.selecting {
+      outline: 2px solid #1a73e8;
+      outline-offset: -2px;
+    }
+
+    .totals-row td {
+      background: #f0f4f8;
+      padding: 8px;
+      font-weight: 600;
+      font-size: 11px;
+    }
+
+    .totals-row .observed {
+      color: #1a73e8;
+    }
+
+    .footer {
+      padding: 16px 20px;
+      background: #f8f9fa;
+      border-top: 1px solid #e0e0e0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .footer-stats {
+      font-size: 13px;
+      color: #666;
+    }
+
+    .footer-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .action-btn {
+      padding: 8px 16px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      background: white;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .action-btn:hover {
+      background: #f5f5f5;
+    }
+
+    .action-btn.primary {
+      background: #1a73e8;
+      color: white;
+      border-color: #1a73e8;
+    }
+
+    .action-btn.primary:hover {
+      background: #1557b0;
+    }
+
+    .instructions {
+      padding: 16px 20px;
+      background: #fffde7;
+      border-bottom: 1px solid #fff59d;
+      font-size: 13px;
+      color: #555;
+    }
+
+    .instructions strong {
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Scatterplot Quick Entry</h1>
+      <button class="submit-btn" onclick="submitData()">Submit to CR ▶</button>
+    </div>
+
+    <div class="patient-info">
+      <div class="info-field">
+        <label>Client</label>
+        <select id="clientSelect">
+          <option>John Doe</option>
+          <option>Jane Smith</option>
+          <option>Alex Johnson</option>
+        </select>
+      </div>
+      <div class="info-field">
+        <label>Date</label>
+        <input type="date" id="dateInput" value="2026-01-27">
+      </div>
+    </div>
+
+    <div class="instructions">
+      <strong>How to use:</strong> Select a brush (IND/ERR/Skip), then click+drag to paint cells.
+      Click individual cells to change them. Use keyboard shortcuts: <kbd>I</kbd>=IND, <kbd>E</kbd>=ERR, <kbd>S</kbd>=Skip, <kbd>C</kbd>=Clear
+    </div>
+
+    <div class="toolbar">
+      <span class="brush-label">Brush:</span>
+      <div class="brush-group">
+        <button class="brush-btn ind active" data-brush="ind" onclick="setBrush('ind')">IND</button>
+        <button class="brush-btn err" data-brush="err" onclick="setBrush('err')">ERR</button>
+        <button class="brush-btn skip" data-brush="skip" onclick="setBrush('skip')">Skip (>)</button>
+        <button class="brush-btn clear" data-brush="empty" onclick="setBrush('empty')">Clear</button>
+      </div>
+      <span class="selection-info" id="selectionInfo">Click and drag to fill cells</span>
+    </div>
+
+    <div class="grid-container">
+      <table class="grid-table" id="gridTable">
+        <thead>
+          <tr>
+            <th class="time-header">Time</th>
+            <th class="behavior-header">Aggression</th>
+            <th class="behavior-header">Elopement</th>
+            <th class="behavior-header">SIB</th>
+            <th class="behavior-header">Screaming</th>
+          </tr>
+        </thead>
+        <tbody id="gridBody">
+          <!-- Generated by JS -->
+        </tbody>
+        <tfoot>
+          <tr class="totals-row">
+            <td><strong>Observed</strong></td>
+            <td class="observed" id="obs-0">0/96</td>
+            <td class="observed" id="obs-1">0/96</td>
+            <td class="observed" id="obs-2">0/96</td>
+            <td class="observed" id="obs-3">0/96</td>
+          </tr>
+          <tr class="totals-row">
+            <td><strong>IND count</strong></td>
+            <td id="ind-0">0</td>
+            <td id="ind-1">0</td>
+            <td id="ind-2">0</td>
+            <td id="ind-3">0</td>
+          </tr>
+          <tr class="totals-row">
+            <td><strong>ERR count</strong></td>
+            <td id="err-0">0</td>
+            <td id="err-1">0</td>
+            <td id="err-2">0</td>
+            <td id="err-3">0</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+
+    <div class="footer">
+      <div class="footer-stats">
+        Total cells filled: <span id="totalFilled">0</span> / 384
+      </div>
+      <div class="footer-actions">
+        <button class="action-btn" onclick="clearAll()">Clear All</button>
+        <button class="action-btn" onclick="fillColumnSkip()">Fill All Skip</button>
+        <button class="action-btn primary" onclick="copyForCR()">Copy for CR</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const behaviors = ['Aggression', 'Elopement', 'SIB', 'Screaming'];
+    const numBehaviors = behaviors.length;
+    const numIntervals = 96;
+
+    // Data storage: grid[row][col] = 'empty' | 'ind' | 'err' | 'skip'
+    let grid = [];
+    let currentBrush = 'ind';
+    let isMouseDown = false;
+    let startCell = null;
+
+    // Initialize grid
+    function initGrid() {
+      grid = [];
+      for (let i = 0; i < numIntervals; i++) {
+        grid[i] = [];
+        for (let j = 0; j < numBehaviors; j++) {
+          grid[i][j] = 'empty';
+        }
+      }
+    }
+
+    // Format time for display
+    function formatTime(intervalIndex) {
+      const totalMinutes = 7 * 60 + intervalIndex * 15; // Start at 7:00 AM
+      const hours = Math.floor(totalMinutes / 60) % 24;
+      const minutes = totalMinutes % 60;
+      const period = hours >= 12 ? 'PM' : 'AM';
+      const displayHour = hours % 12 || 12;
+      const startTime = `${displayHour}:${String(minutes).padStart(2, '0')}`;
+
+      const endMinutes = totalMinutes + 14;
+      const endHours = Math.floor(endMinutes / 60) % 24;
+      const endMins = endMinutes % 60;
+      const endPeriod = endHours >= 12 ? 'PM' : 'AM';
+      const endDisplayHour = endHours % 12 || 12;
+      const endTime = `${endDisplayHour}:${String(endMins).padStart(2, '0')}`;
+
+      return `${startTime}-${endTime} ${period}`;
+    }
+
+    // Build the grid HTML
+    function buildGrid() {
+      const tbody = document.getElementById('gridBody');
+      tbody.innerHTML = '';
+
+      for (let row = 0; row < numIntervals; row++) {
+        const tr = document.createElement('tr');
+
+        // Time cell
+        const timeCell = document.createElement('td');
+        timeCell.className = 'time-cell';
+        timeCell.textContent = formatTime(row);
+        tr.appendChild(timeCell);
+
+        // Data cells
+        for (let col = 0; col < numBehaviors; col++) {
+          const td = document.createElement('td');
+          const cell = document.createElement('div');
+          cell.className = 'data-cell empty';
+          cell.dataset.row = row;
+          cell.dataset.col = col;
+          cell.textContent = '·';
+
+          cell.addEventListener('mousedown', handleMouseDown);
+          cell.addEventListener('mouseenter', handleMouseEnter);
+          cell.addEventListener('mouseup', handleMouseUp);
+
+          td.appendChild(cell);
+          tr.appendChild(td);
+        }
+
+        tbody.appendChild(tr);
+      }
+    }
+
+    // Handle mouse events for click+drag
+    function handleMouseDown(e) {
+      isMouseDown = true;
+      startCell = { row: parseInt(e.target.dataset.row), col: parseInt(e.target.dataset.col) };
+      applyBrush(e.target);
+      e.preventDefault();
+    }
+
+    function handleMouseEnter(e) {
+      if (isMouseDown) {
+        applyBrush(e.target);
+      }
+    }
+
+    function handleMouseUp(e) {
+      isMouseDown = false;
+      startCell = null;
+    }
+
+    // Apply current brush to a cell
+    function applyBrush(cell) {
+      const row = parseInt(cell.dataset.row);
+      const col = parseInt(cell.dataset.col);
+
+      grid[row][col] = currentBrush;
+      updateCellDisplay(cell, currentBrush);
+      updateTotals();
+    }
+
+    // Update cell visual
+    function updateCellDisplay(cell, value) {
+      cell.className = 'data-cell ' + value;
+      switch (value) {
+        case 'ind':
+          cell.textContent = 'IND';
+          break;
+        case 'err':
+          cell.textContent = 'ERR';
+          break;
+        case 'skip':
+          cell.textContent = '>';
+          break;
+        default:
+          cell.textContent = '·';
+      }
+    }
+
+    // Set brush
+    function setBrush(brush) {
+      currentBrush = brush;
+      document.querySelectorAll('.brush-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.brush === brush);
+      });
+    }
+
+    // Update totals
+    function updateTotals() {
+      let totalFilled = 0;
+
+      for (let col = 0; col < numBehaviors; col++) {
+        let observed = 0;
+        let indCount = 0;
+        let errCount = 0;
+
+        for (let row = 0; row < numIntervals; row++) {
+          const val = grid[row][col];
+          if (val !== 'empty') {
+            totalFilled++;
+          }
+          if (val === 'ind' || val === 'err') {
+            observed++;
+          }
+          if (val === 'ind') indCount++;
+          if (val === 'err') errCount++;
+        }
+
+        document.getElementById(`obs-${col}`).textContent = `${observed}/${numIntervals}`;
+        document.getElementById(`ind-${col}`).textContent = indCount;
+        document.getElementById(`err-${col}`).textContent = errCount;
+      }
+
+      document.getElementById('totalFilled').textContent = totalFilled;
+    }
+
+    // Clear all
+    function clearAll() {
+      if (confirm('Clear all data?')) {
+        initGrid();
+        document.querySelectorAll('.data-cell').forEach(cell => {
+          updateCellDisplay(cell, 'empty');
+        });
+        updateTotals();
+      }
+    }
+
+    // Fill column with skip
+    function fillColumnSkip() {
+      const col = prompt('Which behavior column to fill with Skip? (1-4)', '1');
+      const colIndex = parseInt(col) - 1;
+      if (colIndex >= 0 && colIndex < numBehaviors) {
+        for (let row = 0; row < numIntervals; row++) {
+          grid[row][colIndex] = 'skip';
+        }
+        rebuildCellDisplays();
+        updateTotals();
+      }
+    }
+
+    // Rebuild all cell displays from grid data
+    function rebuildCellDisplays() {
+      document.querySelectorAll('.data-cell').forEach(cell => {
+        const row = parseInt(cell.dataset.row);
+        const col = parseInt(cell.dataset.col);
+        updateCellDisplay(cell, grid[row][col]);
+      });
+    }
+
+    // Copy formatted data for CR
+    function copyForCR() {
+      let output = `Scatterplot Data - ${document.getElementById('clientSelect').value}\n`;
+      output += `Date: ${document.getElementById('dateInput').value}\n\n`;
+
+      for (let col = 0; col < numBehaviors; col++) {
+        output += `=== ${behaviors[col]} ===\n`;
+        let observed = 0;
+        let entries = [];
+
+        for (let row = 0; row < numIntervals; row++) {
+          const val = grid[row][col];
+          const time = formatTime(row);
+          if (val === 'ind') {
+            entries.push(`${time}: IND`);
+            observed++;
+          } else if (val === 'err') {
+            entries.push(`${time}: ERR`);
+            observed++;
+          } else if (val === 'skip') {
+            entries.push(`${time}: >`);
+          }
+        }
+
+        output += `Intervals observed: ${observed}/${numIntervals}\n`;
+        output += entries.join('\n') + '\n\n';
+      }
+
+      navigator.clipboard.writeText(output).then(() => {
+        alert('Data copied to clipboard!');
+      });
+    }
+
+    // Submit to CR (placeholder)
+    function submitData() {
+      alert('Submit to CR functionality will be available once API credentials are configured.\n\nFor now, use "Copy for CR" to copy the data.');
+    }
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+      switch (e.key.toLowerCase()) {
+        case 'i':
+          setBrush('ind');
+          break;
+        case 'e':
+          setBrush('err');
+          break;
+        case 's':
+          setBrush('skip');
+          break;
+        case 'c':
+          setBrush('empty');
+          break;
+      }
+    });
+
+    // Prevent text selection during drag
+    document.addEventListener('mouseup', () => {
+      isMouseDown = false;
+    });
+
+    // Initialize
+    initGrid();
+    buildGrid();
+  </script>
+</body>
+</html>
