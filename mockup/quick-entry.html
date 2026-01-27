@@ -547,26 +547,64 @@
       }
     }
 
+    // Track what action to apply during check column drag
+    let checkDragAction = null;
+    let startCheckRow = null;
+
     // Handle click on check column
     function handleCheckClick(e) {
       isMouseDown = true;
       const row = parseInt(e.target.dataset.row);
+      startCheckRow = row;
+
+      // Determine drag action based on current state
+      const currentStatus = rowStatus[row];
+      if (currentStatus === 'skipped') {
+        // Clicking on red X - drag will apply red X
+        checkDragAction = 'skip';
+      } else if (currentStatus === 'checked') {
+        // Clicking on check - drag will apply check
+        checkDragAction = 'check';
+      } else {
+        // Clicking on empty - cycle as normal, drag will apply new state
+        checkDragAction = 'cycle';
+      }
+
       toggleRowCheck(row);
+
+      // Update drag action to match what we just set
+      if (checkDragAction === 'cycle') {
+        checkDragAction = rowStatus[row] === 'checked' ? 'check' : (rowStatus[row] === 'skipped' ? 'skip' : null);
+      }
+
       e.preventDefault();
     }
 
     // Handle drag on check column
     function handleCheckDrag(e) {
-      if (isMouseDown) {
+      if (isMouseDown && checkDragAction) {
         const row = parseInt(e.target.dataset.row);
-        // Apply same status as the first clicked row
-        if (rowStatus[row] !== rowStatus[startCheckRow]) {
-          toggleRowCheck(row);
+        if (hasAnyIND(row)) return; // Don't modify rows with shaded behaviors
+
+        if (checkDragAction === 'skip' && rowStatus[row] !== 'skipped') {
+          // Apply skip to this row
+          rowStatus[row] = 'skipped';
+          for (let col = 0; col < numBehaviors; col++) {
+            grid[row][col] = 'skip';
+          }
+          updateRowDisplayNew(row);
+          updateTotals();
+        } else if (checkDragAction === 'check' && rowStatus[row] !== 'checked') {
+          // Apply check to this row
+          rowStatus[row] = 'checked';
+          for (let col = 0; col < numBehaviors; col++) {
+            grid[row][col] = 'err';
+          }
+          updateRowDisplayNew(row);
+          updateTotals();
         }
       }
     }
-
-    let startCheckRow = null;
 
     // Cycle check column: empty → ✓ → ✗ → empty
     function toggleRowCheck(row) {
@@ -924,6 +962,7 @@
       isMouseDown = false;
       startCheckRow = null;
       dragBrush = null;
+      checkDragAction = null;
     });
 
     // Initialize
