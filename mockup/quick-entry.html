@@ -201,8 +201,32 @@
       min-width: 100px;
     }
 
+    .grid-table th.check-header {
+      width: 36px;
+      min-width: 36px;
+      max-width: 36px;
+    }
+
     .grid-table th.behavior-header {
       min-width: 100px;
+    }
+
+    .check-cell {
+      width: 36px;
+      min-width: 36px;
+      max-width: 36px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .check-cell.checked {
+      background: #f5f5f5;
+      color: #333;
+    }
+
+    .check-cell.skipped {
+      background: #fff5f5;
+      color: #e53935;
     }
 
     .grid-table td {
@@ -388,6 +412,7 @@
         <thead>
           <tr>
             <th class="time-header">Time</th>
+            <th class="check-header">✓</th>
             <th class="behavior-header">Aggression</th>
             <th class="behavior-header">Elopement</th>
             <th class="behavior-header">SIB</th>
@@ -475,6 +500,16 @@
       return `${startTime}-${endTime} ${period}`;
     }
 
+    // Track row status: 'empty' | 'checked' | 'skipped'
+    let rowStatus = [];
+
+    function initRowStatus() {
+      rowStatus = [];
+      for (let i = 0; i < numIntervals; i++) {
+        rowStatus[i] = 'empty';
+      }
+    }
+
     // Build the grid HTML
     function buildGrid() {
       const tbody = document.getElementById('gridBody');
@@ -489,14 +524,24 @@
         timeCell.textContent = formatTime(row);
         tr.appendChild(timeCell);
 
-        // Data cells
+        // Check column cell
+        const checkTd = document.createElement('td');
+        const checkCell = document.createElement('div');
+        checkCell.className = 'data-cell check-cell';
+        checkCell.dataset.row = row;
+        checkCell.dataset.type = 'check';
+        checkCell.addEventListener('mousedown', handleCheckClick);
+        checkCell.addEventListener('mouseenter', handleCheckDrag);
+        checkTd.appendChild(checkCell);
+        tr.appendChild(checkTd);
+
+        // Behavior data cells
         for (let col = 0; col < numBehaviors; col++) {
           const td = document.createElement('td');
           const cell = document.createElement('div');
           cell.className = 'data-cell empty';
           cell.dataset.row = row;
           cell.dataset.col = col;
-          cell.textContent = '·';
 
           cell.addEventListener('mousedown', handleMouseDown);
           cell.addEventListener('mouseenter', handleMouseEnter);
@@ -508,6 +553,48 @@
 
         tbody.appendChild(tr);
       }
+    }
+
+    // Handle click on check column
+    function handleCheckClick(e) {
+      isMouseDown = true;
+      const row = parseInt(e.target.dataset.row);
+      toggleRowCheck(row);
+      e.preventDefault();
+    }
+
+    // Handle drag on check column
+    function handleCheckDrag(e) {
+      if (isMouseDown) {
+        const row = parseInt(e.target.dataset.row);
+        // Apply same status as the first clicked row
+        if (rowStatus[row] !== rowStatus[startCheckRow]) {
+          toggleRowCheck(row);
+        }
+      }
+    }
+
+    let startCheckRow = null;
+
+    // Toggle row between checked and empty/skipped
+    function toggleRowCheck(row) {
+      if (startCheckRow === null) startCheckRow = row;
+
+      if (rowStatus[row] === 'checked') {
+        // Uncheck - clear the row
+        rowStatus[row] = 'empty';
+        for (let col = 0; col < numBehaviors; col++) {
+          grid[row][col] = 'empty';
+        }
+      } else {
+        // Check the row - all ERR
+        rowStatus[row] = 'checked';
+        for (let col = 0; col < numBehaviors; col++) {
+          grid[row][col] = 'err';
+        }
+      }
+      updateRowDisplayNew(row);
+      updateTotals();
     }
 
     // Handle mouse events for click+drag
@@ -535,45 +622,104 @@
       const col = parseInt(cell.dataset.col);
 
       if (currentBrush === 'err') {
-        // ERR = observed entire interval, no behaviors → fill entire row with ERR
+        // ERR = observed entire interval, no behaviors → check the row
+        rowStatus[row] = 'checked';
         for (let c = 0; c < numBehaviors; c++) {
           grid[row][c] = 'err';
         }
-        updateRowDisplay(row);
+        updateRowDisplayNew(row);
       } else if (currentBrush === 'skip') {
         // Skip = not observed → fill entire row with skip
+        rowStatus[row] = 'skipped';
         for (let c = 0; c < numBehaviors; c++) {
           grid[row][c] = 'skip';
         }
-        updateRowDisplay(row);
+        updateRowDisplayNew(row);
       } else if (currentBrush === 'ind') {
         // IND = this specific behavior occurred
         // Mark this cell as IND
         grid[row][col] = 'ind';
+        // Row is now checked (observed) with this behavior
+        rowStatus[row] = 'checked';
         // Other cells in row that are empty or skip should become ERR (you were observing)
         for (let c = 0; c < numBehaviors; c++) {
           if (c !== col && (grid[row][c] === 'empty' || grid[row][c] === 'skip')) {
             grid[row][c] = 'err';
           }
         }
-        updateRowDisplay(row);
+        updateRowDisplayNew(row);
       } else {
-        // Clear - just clear this cell
+        // Clear - clear this cell and possibly row status
         grid[row][col] = 'empty';
-        updateCellDisplay(cell, 'empty');
+        // Check if entire row is now empty
+        let allEmpty = true;
+        for (let c = 0; c < numBehaviors; c++) {
+          if (grid[row][c] !== 'empty') allEmpty = false;
+        }
+        if (allEmpty) rowStatus[row] = 'empty';
+        updateRowDisplayNew(row);
       }
 
       updateTotals();
     }
 
-    // Update all cells in a row
+    // Update all cells in a row (old version for compatibility)
     function updateRowDisplay(row) {
+      updateRowDisplayNew(row);
+    }
+
+    // Update row display with check column logic
+    function updateRowDisplayNew(row) {
+      const checkCell = document.querySelector(`.check-cell[data-row="${row}"]`);
+      const status = rowStatus[row];
+
+      // Update check column
+      if (checkCell) {
+        checkCell.className = 'data-cell check-cell';
+        if (status === 'checked' || hasAnyIND(row)) {
+          checkCell.classList.add('checked');
+          checkCell.textContent = '✓';
+        } else if (status === 'skipped') {
+          checkCell.classList.add('skipped');
+          checkCell.textContent = '✗';
+        } else {
+          checkCell.textContent = '';
+        }
+      }
+
+      // Update behavior cells
       for (let col = 0; col < numBehaviors; col++) {
         const cell = document.querySelector(`.data-cell[data-row="${row}"][data-col="${col}"]`);
         if (cell) {
-          updateCellDisplay(cell, grid[row][col]);
+          const val = grid[row][col];
+
+          if (status === 'skipped' || val === 'skip') {
+            // Skipped row - show red X
+            cell.className = 'data-cell skip';
+            cell.textContent = '✗';
+          } else if (val === 'ind') {
+            // IND - show shaded
+            cell.className = 'data-cell ind';
+            cell.textContent = '▓';
+          } else if (status === 'checked' || val === 'err') {
+            // Checked row with no IND - show blank (but data is ERR)
+            cell.className = 'data-cell empty';
+            cell.textContent = '';
+          } else {
+            // Empty
+            cell.className = 'data-cell empty';
+            cell.textContent = '';
+          }
         }
       }
+    }
+
+    // Check if row has any IND values
+    function hasAnyIND(row) {
+      for (let col = 0; col < numBehaviors; col++) {
+        if (grid[row][col] === 'ind') return true;
+      }
+      return false;
     }
 
     // Update cell visual
@@ -635,33 +781,41 @@
     function clearAll() {
       if (confirm('Clear all data?')) {
         initGrid();
-        document.querySelectorAll('.data-cell').forEach(cell => {
-          updateCellDisplay(cell, 'empty');
-        });
+        initRowStatus();
+        rebuildAllRows();
         updateTotals();
       }
     }
 
-    // Fill entire grid with ERR
+    // Fill entire grid with ERR (all rows checked)
     function fillAllERR() {
       for (let row = 0; row < numIntervals; row++) {
+        rowStatus[row] = 'checked';
         for (let col = 0; col < numBehaviors; col++) {
           grid[row][col] = 'err';
         }
       }
-      rebuildCellDisplays();
+      rebuildAllRows();
       updateTotals();
     }
 
     // Fill entire grid with Skip
     function fillAllSkip() {
       for (let row = 0; row < numIntervals; row++) {
+        rowStatus[row] = 'skipped';
         for (let col = 0; col < numBehaviors; col++) {
           grid[row][col] = 'skip';
         }
       }
-      rebuildCellDisplays();
+      rebuildAllRows();
       updateTotals();
+    }
+
+    // Rebuild all row displays
+    function rebuildAllRows() {
+      for (let row = 0; row < numIntervals; row++) {
+        updateRowDisplayNew(row);
+      }
     }
 
     // Rebuild all cell displays from grid data
@@ -735,10 +889,12 @@
     // Prevent text selection during drag
     document.addEventListener('mouseup', () => {
       isMouseDown = false;
+      startCheckRow = null;
     });
 
     // Initialize
     initGrid();
+    initRowStatus();
     buildGrid();
   </script>
 </body>
