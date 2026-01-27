@@ -703,9 +703,9 @@
             cell.className = 'data-cell skip';
             cell.textContent = '✗';
           } else if (val === 'ind') {
-            // IND - show shaded
+            // IND - show shaded pattern only
             cell.className = 'data-cell ind';
-            cell.textContent = '▓';
+            cell.textContent = '';
           } else if (status === 'checked' || val === 'err') {
             // Checked row with no IND - show blank (but data is ERR)
             cell.className = 'data-cell empty';
