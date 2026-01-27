@@ -413,7 +413,8 @@
       </div>
       <div class="footer-actions">
         <button class="action-btn" onclick="clearAll()">Clear All</button>
-        <button class="action-btn" onclick="fillColumnSkip()">Fill All Skip</button>
+        <button class="action-btn" onclick="fillAllERR()" style="background:#ffebee;color:#c62828;">Fill All ERR</button>
+        <button class="action-btn" onclick="fillAllSkip()" style="background:#f5f5f5;color:#666;">Fill All Skip</button>
         <button class="action-btn primary" onclick="copyForCR()">Copy for CR</button>
       </div>
     </div>
@@ -627,17 +628,26 @@
       }
     }
 
-    // Fill column with skip
-    function fillColumnSkip() {
-      const col = prompt('Which behavior column to fill with Skip? (1-4)', '1');
-      const colIndex = parseInt(col) - 1;
-      if (colIndex >= 0 && colIndex < numBehaviors) {
-        for (let row = 0; row < numIntervals; row++) {
-          grid[row][colIndex] = 'skip';
+    // Fill entire grid with ERR
+    function fillAllERR() {
+      for (let row = 0; row < numIntervals; row++) {
+        for (let col = 0; col < numBehaviors; col++) {
+          grid[row][col] = 'err';
         }
-        rebuildCellDisplays();
-        updateTotals();
       }
+      rebuildCellDisplays();
+      updateTotals();
+    }
+
+    // Fill entire grid with Skip
+    function fillAllSkip() {
+      for (let row = 0; row < numIntervals; row++) {
+        for (let col = 0; col < numBehaviors; col++) {
+          grid[row][col] = 'skip';
+        }
+      }
+      rebuildCellDisplays();
+      updateTotals();
     }
 
     // Rebuild all cell displays from grid data
