@@ -998,9 +998,162 @@
       });
     }
 
-    // Submit to CR (placeholder)
+    // Submit to CR - show preview of what CR would see
     function submitData() {
-      alert('Submit to CR functionality will be available once API credentials are configured.\n\nFor now, use "Copy for CR" to copy the data.');
+      showCRPreview();
+    }
+
+    // Show CR preview modal
+    function showCRPreview() {
+      // Create modal overlay
+      const overlay = document.createElement('div');
+      overlay.id = 'crPreviewOverlay';
+      overlay.style.cssText = `
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.5); z-index: 1000;
+        display: flex; align-items: center; justify-content: center;
+      `;
+
+      const modal = document.createElement('div');
+      modal.style.cssText = `
+        background: white; border-radius: 12px; max-width: 90%; max-height: 90%;
+        overflow: auto; box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      `;
+
+      // Header
+      const header = document.createElement('div');
+      header.style.cssText = `
+        padding: 16px 20px; background: #1a73e8; color: white;
+        display: flex; justify-content: space-between; align-items: center;
+        position: sticky; top: 0;
+      `;
+      header.innerHTML = `
+        <h2 style="margin:0;font-size:18px;">CR Preview - What CentralReach Would See</h2>
+        <button onclick="closeCRPreview()" style="background:none;border:none;color:white;font-size:24px;cursor:pointer;">&times;</button>
+      `;
+      modal.appendChild(header);
+
+      // Info bar
+      const info = document.createElement('div');
+      info.style.cssText = `padding: 12px 20px; background: #f8f9fa; border-bottom: 1px solid #e0e0e0; font-size: 13px;`;
+      info.innerHTML = `
+        <strong>Client:</strong> ${document.getElementById('clientSelect').value} &nbsp;|&nbsp;
+        <strong>Date:</strong> ${document.getElementById('dateInput').value}
+      `;
+      modal.appendChild(info);
+
+      // Content - one table per behavior
+      const content = document.createElement('div');
+      content.style.cssText = `padding: 20px;`;
+
+      for (let col = 0; col < numBehaviors; col++) {
+        const section = document.createElement('div');
+        section.style.cssText = `margin-bottom: 24px;`;
+
+        // Behavior header
+        const behaviorHeader = document.createElement('h3');
+        behaviorHeader.style.cssText = `margin: 0 0 8px 0; font-size: 14px; color: #333;`;
+        behaviorHeader.textContent = behaviors[col];
+        section.appendChild(behaviorHeader);
+
+        // Calculate stats
+        let observed = 0, indCount = 0, errCount = 0;
+        for (let row = 0; row < numIntervals; row++) {
+          let val = grid[row][col];
+          if (val === 'empty') val = 'skip';
+          if (val === 'ind') { observed++; indCount++; }
+          if (val === 'err') { observed++; errCount++; }
+        }
+
+        const stats = document.createElement('div');
+        stats.style.cssText = `font-size: 12px; color: #666; margin-bottom: 8px;`;
+        stats.textContent = `Intervals observed: ${observed}/96 | IND: ${indCount} | ERR: ${errCount}`;
+        section.appendChild(stats);
+
+        // Grid table
+        const table = document.createElement('table');
+        table.style.cssText = `
+          border-collapse: collapse; font-size: 11px; font-family: monospace;
+        `;
+
+        // Create 8 columns of 12 rows each for compact view
+        const colsPerRow = 8;
+        const rowsPerCol = 12;
+
+        for (let r = 0; r < rowsPerCol; r++) {
+          const tr = document.createElement('tr');
+          for (let c = 0; c < colsPerRow; c++) {
+            const idx = c * rowsPerCol + r;
+            if (idx < numIntervals) {
+              // Time cell
+              const timeTd = document.createElement('td');
+              timeTd.style.cssText = `padding: 3px 6px; border: 1px solid #ddd; background: #f5f5f5; font-size: 10px;`;
+              timeTd.textContent = formatTimeShort(idx);
+              tr.appendChild(timeTd);
+
+              // Value cell
+              const valTd = document.createElement('td');
+              let val = grid[idx][col];
+              if (val === 'empty') val = 'skip';
+
+              let bgColor = '#fff', textColor = '#333', displayVal = '>';
+              if (val === 'ind') {
+                bgColor = '#e8f5e9'; textColor = '#1b5e20'; displayVal = 'IND';
+              } else if (val === 'err') {
+                bgColor = '#fff3e0'; textColor = '#e65100'; displayVal = 'ERR';
+              } else {
+                bgColor = '#fafafa'; textColor = '#999'; displayVal = '>';
+              }
+
+              valTd.style.cssText = `padding: 3px 8px; border: 1px solid #ddd; background: ${bgColor}; color: ${textColor}; text-align: center; font-weight: 500;`;
+              valTd.textContent = displayVal;
+              tr.appendChild(valTd);
+            }
+          }
+          table.appendChild(tr);
+        }
+
+        section.appendChild(table);
+        content.appendChild(section);
+      }
+
+      modal.appendChild(content);
+
+      // Footer
+      const footer = document.createElement('div');
+      footer.style.cssText = `
+        padding: 16px 20px; background: #f8f9fa; border-top: 1px solid #e0e0e0;
+        display: flex; justify-content: flex-end; gap: 8px;
+        position: sticky; bottom: 0;
+      `;
+      footer.innerHTML = `
+        <button onclick="closeCRPreview()" style="padding: 10px 20px; border: 1px solid #ddd; border-radius: 6px; background: white; cursor: pointer;">Close</button>
+        <button onclick="closeCRPreview(); copyForCR();" style="padding: 10px 20px; border: none; border-radius: 6px; background: #1a73e8; color: white; cursor: pointer;">Copy Data</button>
+      `;
+      modal.appendChild(footer);
+
+      overlay.appendChild(modal);
+      document.body.appendChild(overlay);
+
+      // Close on overlay click
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) closeCRPreview();
+      });
+    }
+
+    function closeCRPreview() {
+      const overlay = document.getElementById('crPreviewOverlay');
+      if (overlay) overlay.remove();
+    }
+
+    // Short time format for preview
+    function formatTimeShort(intervalIndex) {
+      const totalMinutes = 7 * 60 + intervalIndex * 15;
+      const hours = Math.floor(totalMinutes / 60) % 24;
+      const minutes = totalMinutes % 60;
+      const displayHour = hours % 12 || 12;
+      const period = hours >= 12 ? 'p' : 'a';
+      return `${displayHour}:${String(minutes).padStart(2, '0')}${period}`;
     }
 
     // Keyboard shortcuts
