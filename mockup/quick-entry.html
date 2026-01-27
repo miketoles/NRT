@@ -576,21 +576,30 @@
 
     let startCheckRow = null;
 
-    // Toggle row between checked and empty/skipped
+    // Cycle check column: empty → ✓ → ✗ → empty
     function toggleRowCheck(row) {
       if (startCheckRow === null) startCheckRow = row;
 
-      if (rowStatus[row] === 'checked') {
-        // Uncheck - clear the row
-        rowStatus[row] = 'empty';
-        for (let col = 0; col < numBehaviors; col++) {
-          grid[row][col] = 'empty';
-        }
-      } else {
-        // Check the row - all ERR
+      // If row has any IND, don't allow check column changes
+      if (hasAnyIND(row)) return;
+
+      if (rowStatus[row] === 'empty') {
+        // Empty → Checked (all ERR)
         rowStatus[row] = 'checked';
         for (let col = 0; col < numBehaviors; col++) {
           grid[row][col] = 'err';
+        }
+      } else if (rowStatus[row] === 'checked') {
+        // Checked → Skipped (all skip)
+        rowStatus[row] = 'skipped';
+        for (let col = 0; col < numBehaviors; col++) {
+          grid[row][col] = 'skip';
+        }
+      } else {
+        // Skipped → Empty
+        rowStatus[row] = 'empty';
+        for (let col = 0; col < numBehaviors; col++) {
+          grid[row][col] = 'empty';
         }
       }
       updateRowDisplayNew(row);
@@ -672,11 +681,15 @@
     function updateRowDisplayNew(row) {
       const checkCell = document.querySelector(`.check-cell[data-row="${row}"]`);
       const status = rowStatus[row];
+      const hasIND = hasAnyIND(row);
 
-      // Update check column
+      // Update check column - blank if row has any shaded behaviors
       if (checkCell) {
         checkCell.className = 'data-cell check-cell';
-        if (status === 'checked' || hasAnyIND(row)) {
+        if (hasIND) {
+          // Row has shaded behaviors - check column is blank
+          checkCell.textContent = '';
+        } else if (status === 'checked') {
           checkCell.classList.add('checked');
           checkCell.textContent = '✓';
         } else if (status === 'skipped') {
