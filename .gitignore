@@ -50,3 +50,6 @@ next-env.d.ts
 # SQLite database
 *.db
 prisma/dev.db
+
+# Database backups (local only)
+/backups/
