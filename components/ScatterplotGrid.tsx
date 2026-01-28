@@ -24,6 +24,12 @@ interface ScatterplotGridProps {
 
 type BrushType = 'ind' | 'err' | 'skip' | 'empty';
 type RowStatus = 'empty' | 'checked' | 'skipped';
+type CheckDragAction = 'check' | 'skip' | null;
+
+// Wavy pattern SVG for "ind" (shaded) cells - uses CSS variable color
+// Light theme uses #8898A8, dark theme uses #666666
+const getWavyPatternSvg = (color: string) =>
+  `data:image/svg+xml,%3Csvg width='20' height='20' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 3 Q5 0 10 3 T20 3 M0 8 Q5 5 10 8 T20 8 M0 13 Q5 10 10 13 T20 13 M0 18 Q5 15 10 18 T20 18' stroke='${encodeURIComponent(color)}' stroke-width='1.5' fill='none'/%3E%3C/svg%3E`;
 
 // Format time for display (7:00 AM start)
 function formatTime(intervalIndex: number): string {
@@ -97,6 +103,16 @@ export function ScatterplotGrid({ behaviors, initialIntervals = [], onSave, savi
   const [dragBrush, setDragBrush] = useState<BrushType | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
 
+  // Check column drag state
+  const [isCheckDragging, setIsCheckDragging] = useState(false);
+  const [checkDragAction, setCheckDragAction] = useState<CheckDragAction>(null);
+  const [hasCheckDragged, setHasCheckDragged] = useState(false);
+  const startCheckRowRef = useRef<number | null>(null);
+
+  // Track if behavior cell was dragged (to prevent toggle on drag)
+  const [hasDragged, setHasDragged] = useState(false);
+  const startCellRef = useRef<{row: number, col: number} | null>(null);
+
   const gridRef = useRef<HTMLTableElement>(null);
 
   // Calculate totals
@@ -144,8 +160,8 @@ export function ScatterplotGrid({ behaviors, initialIntervals = [], onSave, savi
     setHasChanges(true);
   }, [behaviors.length]);
 
-  // Handle cell click
-  const handleCellClick = useCallback((row: number, col: number) => {
+  // Toggle a single behavior cell (IND ↔ ERR)
+  const toggleBehaviorCell = useCallback((row: number, col: number) => {
     const currentValue = grid[row][col];
 
     if (currentValue === 'ind') {
@@ -173,22 +189,68 @@ export function ScatterplotGrid({ behaviors, initialIntervals = [], onSave, savi
     setHasChanges(true);
   }, [grid, updateCell, behaviors.length]);
 
-  // Handle check column click
-  const handleCheckClick = useCallback((row: number) => {
+  // Toggle check column between ✓ and ✗
+  const toggleCheckColumn = useCallback((row: number) => {
     if (hasAnyInd(row)) return;
 
     const current = rowStatus[row];
     if (current === 'checked') {
+      // Check → Skip
       updateRow(row, 'skip', 'skipped');
     } else {
+      // Skip or empty → Check
       updateRow(row, 'err', 'checked');
     }
   }, [hasAnyInd, rowStatus, updateRow]);
+
+  // Handle check column mouse down (start drag)
+  const handleCheckMouseDown = useCallback((row: number, e: React.MouseEvent) => {
+    e.preventDefault();
+    if (hasAnyInd(row)) return;
+
+    setIsCheckDragging(true);
+    setHasCheckDragged(false);
+    startCheckRowRef.current = row;
+
+    // Determine drag action based on current state (format painter)
+    const currentStatus = rowStatus[row];
+    if (currentStatus === 'skipped') {
+      setCheckDragAction('skip');
+    } else {
+      setCheckDragAction('check');
+    }
+  }, [hasAnyInd, rowStatus]);
+
+  // Handle check column mouse enter (during drag)
+  const handleCheckMouseEnter = useCallback((row: number) => {
+    if (!isCheckDragging || !checkDragAction) return;
+    if (hasAnyInd(row)) return;
+
+    setHasCheckDragged(true);
+
+    if (checkDragAction === 'skip' && rowStatus[row] !== 'skipped') {
+      updateRow(row, 'skip', 'skipped');
+    } else if (checkDragAction === 'check' && rowStatus[row] !== 'checked') {
+      updateRow(row, 'err', 'checked');
+    }
+  }, [isCheckDragging, checkDragAction, hasAnyInd, rowStatus, updateRow]);
+
+  // Handle check column mouse up (end drag, toggle if no drag)
+  const handleCheckMouseUp = useCallback((row: number) => {
+    if (!hasCheckDragged && startCheckRowRef.current !== null) {
+      const startRow = startCheckRowRef.current;
+      if (!hasAnyInd(startRow)) {
+        toggleCheckColumn(startRow);
+      }
+    }
+  }, [hasCheckDragged, hasAnyInd, toggleCheckColumn]);
 
   // Handle cell drag
   const handleCellMouseDown = useCallback((row: number, col: number, e: React.MouseEvent) => {
     e.preventDefault();
     setIsDragging(true);
+    setHasDragged(false);
+    startCellRef.current = { row, col };
 
     const cellValue = grid[row][col];
     if (cellValue === 'skip') {
@@ -205,35 +267,81 @@ export function ScatterplotGrid({ behaviors, initialIntervals = [], onSave, savi
   const handleCellMouseEnter = useCallback((row: number, col: number) => {
     if (!isDragging || !dragBrush) return;
 
+    setHasDragged(true);
+
     if (dragBrush === 'err') {
       updateRow(row, 'err', 'checked');
     } else if (dragBrush === 'skip') {
       updateRow(row, 'skip', 'skipped');
     } else if (dragBrush === 'ind') {
-      updateCell(row, col, 'ind');
+      // Toggle behavior: if already IND, turn to ERR; otherwise turn to IND
+      setGrid(prev => {
+        const newGrid = prev.map(r => [...r]);
+        if (newGrid[row][col] === 'ind') {
+          // Already shaded - toggle it off (back to ERR since row was observed)
+          newGrid[row][col] = 'err';
+        } else {
+          // Mark this cell as IND
+          newGrid[row][col] = 'ind';
+          // Fill other empty/skip cells with ERR
+          for (let c = 0; c < behaviors.length; c++) {
+            if (c !== col && (newGrid[row][c] === '' || newGrid[row][c] === 'skip')) {
+              newGrid[row][c] = 'err';
+            }
+          }
+        }
+        return newGrid;
+      });
       setRowStatus(prev => {
         const newStatus = [...prev];
         newStatus[row] = 'checked';
         return newStatus;
       });
-      // Fill other empty cells
+      setHasChanges(true);
+    } else if (dragBrush === 'empty') {
+      // Clear this cell
       setGrid(prev => {
         const newGrid = prev.map(r => [...r]);
-        for (let c = 0; c < behaviors.length; c++) {
-          if (c !== col && (newGrid[row][c] === '' || newGrid[row][c] === 'skip')) {
-            newGrid[row][c] = 'err';
-          }
+        newGrid[row][col] = '';
+        // Check if entire row is now empty
+        const allEmpty = newGrid[row].every(v => v === '');
+        if (allEmpty) {
+          setRowStatus(prevStatus => {
+            const newStatus = [...prevStatus];
+            newStatus[row] = 'empty';
+            return newStatus;
+          });
         }
         return newGrid;
       });
+      setHasChanges(true);
     }
-  }, [isDragging, dragBrush, updateRow, updateCell, behaviors.length]);
+  }, [isDragging, dragBrush, updateRow, behaviors.length]);
 
-  // Handle mouse up
+  // Handle cell mouse up (toggle if no drag happened)
+  const handleCellMouseUp = useCallback((row: number, col: number) => {
+    if (!hasDragged && startCellRef.current !== null) {
+      const startCell = startCellRef.current;
+      // Only toggle if mouseup is on the same cell as mousedown
+      if (startCell.row === row && startCell.col === col) {
+        toggleBehaviorCell(row, col);
+      }
+    }
+  }, [hasDragged, toggleBehaviorCell]);
+
+  // Handle global mouse up - reset all drag states
   useEffect(() => {
     const handleMouseUp = () => {
       setIsDragging(false);
       setDragBrush(null);
+      setHasDragged(false);
+      startCellRef.current = null;
+
+      // Reset check column drag state
+      setIsCheckDragging(false);
+      setCheckDragAction(null);
+      setHasCheckDragged(false);
+      startCheckRowRef.current = null;
     };
     document.addEventListener('mouseup', handleMouseUp);
     return () => document.removeEventListener('mouseup', handleMouseUp);
@@ -294,104 +402,212 @@ export function ScatterplotGrid({ behaviors, initialIntervals = [], onSave, savi
     setHasChanges(false);
   }, [grid, behaviors, onSave]);
 
-  // Get cell class
-  const getCellClass = (row: number, col: number) => {
+  // Get cell style - uses CSS variables for theme awareness
+  // Grid cells are ALWAYS white with black text for readability
+  const getCellStyle = (row: number, col: number): React.CSSProperties => {
     const value = grid[row][col];
     const status = rowStatus[row];
 
-    if (status === 'skipped' || value === 'skip') return 'bg-red-50 text-red-500';
-    if (value === 'ind') return 'bg-gray-300';
-    return 'bg-white';
+    // Skip cells - light red background
+    if (status === 'skipped' || value === 'skip') {
+      return {
+        background: '#FEE2E2',
+        color: '#DC2626',
+      };
+    }
+    // IND cells - grey shaded with wavy pattern
+    if (value === 'ind') {
+      return {
+        backgroundColor: 'var(--grid-shaded-bg)',
+        backgroundImage: `url("${getWavyPatternSvg('#888888')}")`,
+        backgroundSize: '20px 20px',
+        color: 'var(--grid-text)',
+      };
+    }
+    // Default - white cell with black text
+    return {
+      background: 'var(--grid-cell-bg)',
+      color: 'var(--grid-text)',
+    };
   };
 
   return (
-    <div className="bg-white rounded-lg shadow overflow-hidden">
+    <div style={{
+      background: 'var(--surface)',
+      borderRadius: '10px',
+      border: '1px solid var(--border)',
+      overflow: 'hidden',
+    }}>
+      {/* Instructions */}
+      <div style={{
+        padding: '12px 20px',
+        background: 'var(--surface-elevated)',
+        borderBottom: '1px solid var(--border)',
+        fontSize: '13px',
+        color: 'var(--text-muted)',
+      }}>
+        <strong style={{ color: 'var(--text)' }}>How to use:</strong>{' '}
+        <strong style={{ color: 'var(--primary)' }}>Shaded</strong> = behavior occurred |{' '}
+        <strong style={{ color: 'var(--text)' }}>✓ Check</strong> = observed, no behavior (fills row) |{' '}
+        <strong style={{ color: 'var(--danger)' }}>✗ Skip</strong> = not observed (fills row).{' '}
+        Click+drag to fill. Keys:{' '}
+        <kbd style={{ background: 'var(--mist)', padding: '2px 6px', borderRadius: '3px', fontFamily: 'monospace', fontSize: '11px', color: 'var(--text)' }}>I</kbd>{' '}
+        <kbd style={{ background: 'var(--mist)', padding: '2px 6px', borderRadius: '3px', fontFamily: 'monospace', fontSize: '11px', color: 'var(--text)' }}>E</kbd>{' '}
+        <kbd style={{ background: 'var(--mist)', padding: '2px 6px', borderRadius: '3px', fontFamily: 'monospace', fontSize: '11px', color: 'var(--text)' }}>S</kbd>{' '}
+        <kbd style={{ background: 'var(--mist)', padding: '2px 6px', borderRadius: '3px', fontFamily: 'monospace', fontSize: '11px', color: 'var(--text)' }}>C</kbd>
+      </div>
+
       {/* Toolbar */}
-      <div className="px-4 py-3 border-b border-gray-200 flex flex-wrap items-center gap-4">
-        <span className="text-sm font-medium text-gray-700">Brush:</span>
-        <div className="flex gap-1">
+      <div style={{
+        padding: '12px 20px',
+        background: 'var(--surface)',
+        borderBottom: '1px solid var(--border)',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '16px',
+        flexWrap: 'wrap',
+      }}>
+        <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text)' }}>Brush:</span>
+        <div style={{ display: 'flex', gap: '4px' }}>
           <button
             onClick={() => setCurrentBrush('ind')}
-            className={`px-3 py-1.5 text-sm rounded border ${
-              currentBrush === 'ind'
-                ? 'bg-gray-300 border-gray-600'
-                : 'bg-gray-100 border-gray-300 hover:bg-gray-200'
-            }`}
+            style={{
+              padding: '8px 16px',
+              border: `2px solid ${currentBrush === 'ind' ? 'var(--primary)' : 'var(--border)'}`,
+              borderRadius: '6px',
+              fontSize: '13px',
+              fontWeight: 500,
+              cursor: 'pointer',
+              background: currentBrush === 'ind'
+                ? `repeating-linear-gradient(-45deg, var(--primary) 0px, var(--primary) 2px, var(--secondary) 2px, var(--secondary) 4px)`
+                : `repeating-linear-gradient(-45deg, var(--surface-elevated) 0px, var(--surface-elevated) 2px, var(--surface) 2px, var(--surface) 4px)`,
+              color: currentBrush === 'ind' ? 'white' : 'var(--primary)',
+              transition: 'all 0.15s',
+            }}
           >
             Shaded
           </button>
           <button
             onClick={() => setCurrentBrush('err')}
-            className={`px-3 py-1.5 text-sm rounded border ${
-              currentBrush === 'err'
-                ? 'bg-gray-200 border-gray-600'
-                : 'border-gray-300 hover:bg-gray-100'
-            }`}
+            style={{
+              padding: '8px 16px',
+              border: `2px solid ${currentBrush === 'err' ? 'var(--text)' : 'var(--border)'}`,
+              borderRadius: '6px',
+              fontSize: '13px',
+              fontWeight: 500,
+              cursor: 'pointer',
+              background: currentBrush === 'err' ? 'var(--surface-elevated)' : 'var(--surface)',
+              color: 'var(--text)',
+              transition: 'all 0.15s',
+            }}
           >
-            Check (row)
+            ✓ Check (row)
           </button>
           <button
             onClick={() => setCurrentBrush('skip')}
-            className={`px-3 py-1.5 text-sm rounded border ${
-              currentBrush === 'skip'
-                ? 'bg-red-100 border-red-500 text-red-600'
-                : 'border-gray-300 hover:bg-red-50 text-red-500'
-            }`}
+            style={{
+              padding: '8px 16px',
+              border: `2px solid ${currentBrush === 'skip' ? 'var(--danger)' : 'var(--border)'}`,
+              borderRadius: '6px',
+              fontSize: '13px',
+              fontWeight: 500,
+              cursor: 'pointer',
+              background: currentBrush === 'skip' ? 'var(--danger-bg)' : 'var(--surface)',
+              color: 'var(--danger)',
+              transition: 'all 0.15s',
+            }}
           >
-            Skip (row)
+            ✗ Skip (row)
           </button>
           <button
             onClick={() => setCurrentBrush('empty')}
-            className={`px-3 py-1.5 text-sm rounded border ${
-              currentBrush === 'empty'
-                ? 'bg-gray-100 border-gray-600'
-                : 'border-gray-300 hover:bg-gray-50'
-            }`}
+            style={{
+              padding: '8px 16px',
+              border: `2px solid ${currentBrush === 'empty' ? 'var(--text-muted)' : 'var(--border)'}`,
+              borderRadius: '6px',
+              fontSize: '13px',
+              fontWeight: 500,
+              cursor: 'pointer',
+              background: 'var(--surface)',
+              color: 'var(--text-muted)',
+              transition: 'all 0.15s',
+            }}
           >
             Clear
           </button>
         </div>
-        <div className="flex gap-2 ml-auto">
-          <button
-            onClick={fillAllERR}
-            className="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded"
-          >
-            Fill All Check
-          </button>
-          <button
-            onClick={fillAllSkip}
-            className="px-3 py-1.5 text-sm bg-red-50 text-red-600 hover:bg-red-100 rounded"
-          >
-            Fill All Skip
-          </button>
-        </div>
-      </div>
-
-      {/* Instructions */}
-      <div className="px-4 py-2 bg-yellow-50 border-b border-yellow-200 text-sm text-gray-600">
-        <strong>Click</strong> a cell to toggle behavior. <strong>Drag</strong> to fill.
-        Keys: <kbd className="px-1 bg-gray-100 rounded text-xs">I</kbd> Shaded
-        <kbd className="px-1 bg-gray-100 rounded text-xs ml-2">E</kbd> Check
-        <kbd className="px-1 bg-gray-100 rounded text-xs ml-2">S</kbd> Skip
-        <kbd className="px-1 bg-gray-100 rounded text-xs ml-2">C</kbd> Clear
+        <span style={{ borderLeft: '1px solid var(--border)', height: '24px', margin: '0 8px' }}></span>
+        <button
+          onClick={fillAllERR}
+          style={{
+            padding: '8px 12px',
+            border: '1px solid var(--border)',
+            borderRadius: '6px',
+            fontSize: '12px',
+            cursor: 'pointer',
+            background: 'var(--surface-elevated)',
+            color: 'var(--text)',
+          }}
+        >
+          Fill All ✓
+        </button>
+        <button
+          onClick={fillAllSkip}
+          style={{
+            padding: '8px 12px',
+            border: '1px solid var(--border)',
+            borderRadius: '6px',
+            fontSize: '12px',
+            cursor: 'pointer',
+            background: 'var(--danger-bg)',
+            color: 'var(--danger)',
+          }}
+        >
+          Fill All ✗
+        </button>
+        <span style={{ marginLeft: 'auto', fontSize: '13px', color: 'var(--text-muted)' }}>
+          Click and drag to fill cells
+        </span>
       </div>
 
       {/* Grid */}
-      <div className="overflow-x-auto max-h-[60vh] overflow-y-auto">
-        <table ref={gridRef} className="w-full border-collapse text-sm select-none">
-          <thead className="sticky top-0 z-10">
-            <tr className="bg-gray-50">
-              <th className="px-2 py-2 text-left font-medium text-gray-600 border-b min-w-[100px]">Time</th>
-              <th className="px-2 py-2 text-center font-medium text-gray-600 border-b w-10">Check</th>
+      <div style={{ padding: '16px 20px', overflowX: 'auto', maxHeight: '60vh', overflowY: 'auto' }}>
+        <table ref={gridRef} style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', userSelect: 'none' }}>
+          <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
+            <tr>
+              <th style={{
+                background: 'var(--grid-header-bg)',
+                padding: '10px 8px',
+                textAlign: 'left',
+                fontWeight: 600,
+                border: '1px solid var(--grid-cell-border, var(--border))',
+                minWidth: '100px',
+                color: 'var(--text)',
+              }}>Time</th>
+              <th style={{
+                background: 'var(--grid-header-bg)',
+                padding: '10px 8px',
+                textAlign: 'center',
+                fontWeight: 600,
+                border: '1px solid var(--grid-cell-border, var(--border))',
+                width: '36px',
+                minWidth: '36px',
+                maxWidth: '36px',
+                color: 'var(--text)',
+              }}>✓</th>
               {behaviors.map(behavior => (
                 <th
                   key={behavior.id}
-                  className="px-2 py-2 text-center font-medium text-gray-600 border-b min-w-[80px]"
+                  style={{
+                    background: 'var(--grid-header-bg)',
+                    padding: '10px 8px',
+                    textAlign: 'center',
+                    fontWeight: 600,
+                    border: '1px solid var(--grid-cell-border, var(--border))',
+                    minWidth: '100px',
+                    color: 'var(--text)',
+                  }}
                 >
-                  <span
-                    className="inline-block w-3 h-3 rounded-full mr-1"
-                    style={{ backgroundColor: behavior.color || '#6b7280' }}
-                  />
                   {behavior.name}
                 </th>
               ))}
@@ -399,62 +615,106 @@ export function ScatterplotGrid({ behaviors, initialIntervals = [], onSave, savi
           </thead>
           <tbody>
             {Array.from({ length: INTERVALS_PER_DAY }).map((_, row) => (
-              <tr key={row} className="hover:bg-gray-50">
-                <td className="px-2 py-1 text-xs text-gray-500 border-b bg-gray-50">
+              <tr key={row}>
+                <td style={{
+                  padding: '6px 8px',
+                  textAlign: 'left',
+                  background: 'var(--grid-time-bg)',
+                  fontWeight: 500,
+                  fontSize: '11px',
+                  color: 'var(--grid-time-text, var(--text-muted))',
+                  border: '1px solid var(--grid-cell-border, var(--border))',
+                }}>
                   {formatTime(row)}
                 </td>
-                <td className="px-2 py-1 text-center border-b">
+                <td style={{
+                  border: '1px solid var(--grid-cell-border, var(--border))',
+                  padding: 0,
+                  textAlign: 'center',
+                  width: '36px',
+                  minWidth: '36px',
+                  maxWidth: '36px',
+                }}>
                   <div
-                    onClick={() => handleCheckClick(row)}
-                    className={`w-7 h-7 flex items-center justify-center cursor-pointer rounded ${
-                      hasAnyInd(row) ? 'text-gray-300' :
-                      rowStatus[row] === 'checked' ? 'bg-gray-100 text-gray-700' :
-                      rowStatus[row] === 'skipped' ? 'bg-red-50 text-red-500' : ''
-                    }`}
+                    onMouseDown={(e) => handleCheckMouseDown(row, e)}
+                    onMouseEnter={() => handleCheckMouseEnter(row)}
+                    onMouseUp={() => handleCheckMouseUp(row)}
+                    style={{
+                      width: '100%',
+                      height: '28px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      background: hasAnyInd(row) ? 'var(--grid-cell-bg)' :
+                        rowStatus[row] === 'checked' ? '#F5F5F5' :
+                        rowStatus[row] === 'skipped' ? '#FEE2E2' : 'var(--grid-cell-bg)',
+                      color: hasAnyInd(row) ? 'transparent' :
+                        rowStatus[row] === 'checked' ? '#1A1A1A' :
+                        rowStatus[row] === 'skipped' ? '#DC2626' : 'transparent',
+                    }}
                   >
-                    {!hasAnyInd(row) && rowStatus[row] === 'checked' && 'check'}
-                    {!hasAnyInd(row) && rowStatus[row] === 'skipped' && 'X'}
+                    {!hasAnyInd(row) && rowStatus[row] === 'checked' && '✓'}
+                    {!hasAnyInd(row) && rowStatus[row] === 'skipped' && '✗'}
                   </div>
                 </td>
                 {behaviors.map((_, col) => (
-                  <td key={col} className="px-1 py-1 border-b">
+                  <td key={col} style={{ border: '1px solid var(--grid-cell-border, var(--border))', padding: 0, textAlign: 'center' }}>
                     <div
-                      onClick={() => handleCellClick(row, col)}
                       onMouseDown={(e) => handleCellMouseDown(row, col, e)}
                       onMouseEnter={() => handleCellMouseEnter(row, col)}
-                      className={`w-full h-7 flex items-center justify-center cursor-pointer rounded transition-colors ${getCellClass(row, col)}`}
+                      onMouseUp={() => handleCellMouseUp(row, col)}
+                      style={{
+                        width: '100%',
+                        height: '28px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        transition: 'background 0.1s',
+                        fontWeight: 600,
+                        fontSize: '14px',
+                        ...getCellStyle(row, col),
+                      }}
                     >
-                      {rowStatus[row] === 'skipped' || grid[row][col] === 'skip' ? 'X' : ''}
+                      {(rowStatus[row] === 'skipped' || grid[row][col] === 'skip') && '✗'}
                     </div>
                   </td>
                 ))}
               </tr>
             ))}
           </tbody>
-          <tfoot className="sticky bottom-0 bg-blue-50">
-            <tr>
-              <td className="px-2 py-2 font-medium text-gray-700 border-t">Observed</td>
-              <td className="px-2 py-2 border-t"></td>
+          <tfoot>
+            <tr style={{ background: 'var(--surface-elevated)' }}>
+              <td style={{ padding: '8px', fontWeight: 600, fontSize: '11px', border: '1px solid var(--border)', color: 'var(--text)' }}>
+                <strong>Observed</strong>
+              </td>
+              <td style={{ padding: '8px', border: '1px solid var(--border)', color: 'var(--primary)' }}></td>
               {totals.map((t, i) => (
-                <td key={i} className="px-2 py-2 text-center text-blue-600 font-medium border-t">
+                <td key={i} style={{ padding: '8px', textAlign: 'center', border: '1px solid var(--border)', color: 'var(--primary)', fontWeight: 600, fontSize: '11px' }}>
                   {t.observed}/{INTERVALS_PER_DAY}
                 </td>
               ))}
             </tr>
-            <tr>
-              <td className="px-2 py-2 font-medium text-gray-700">IND count</td>
-              <td className="px-2 py-2"></td>
+            <tr style={{ background: 'var(--surface-elevated)' }}>
+              <td style={{ padding: '8px', fontWeight: 600, fontSize: '11px', border: '1px solid var(--border)', color: 'var(--text)' }}>
+                <strong>IND count</strong>
+              </td>
+              <td style={{ padding: '8px', border: '1px solid var(--border)' }}></td>
               {totals.map((t, i) => (
-                <td key={i} className="px-2 py-2 text-center text-gray-600">
+                <td key={i} style={{ padding: '8px', textAlign: 'center', border: '1px solid var(--border)', color: 'var(--text-muted)', fontSize: '11px' }}>
                   {t.indCount}
                 </td>
               ))}
             </tr>
-            <tr>
-              <td className="px-2 py-2 font-medium text-gray-700">ERR count</td>
-              <td className="px-2 py-2"></td>
+            <tr style={{ background: 'var(--surface-elevated)' }}>
+              <td style={{ padding: '8px', fontWeight: 600, fontSize: '11px', border: '1px solid var(--border)', color: 'var(--text)' }}>
+                <strong>ERR count</strong>
+              </td>
+              <td style={{ padding: '8px', border: '1px solid var(--border)' }}></td>
               {totals.map((t, i) => (
-                <td key={i} className="px-2 py-2 text-center text-gray-600">
+                <td key={i} style={{ padding: '8px', textAlign: 'center', border: '1px solid var(--border)', color: 'var(--text-muted)', fontSize: '11px' }}>
                   {t.errCount}
                 </td>
               ))}
@@ -464,22 +724,46 @@ export function ScatterplotGrid({ behaviors, initialIntervals = [], onSave, savi
       </div>
 
       {/* Footer */}
-      <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 flex justify-between items-center">
-        <div className="text-sm text-gray-600">
-          Total filled: {totalFilled} / {INTERVALS_PER_DAY * behaviors.length}
-          {hasChanges && <span className="ml-2 text-yellow-600">(unsaved changes)</span>}
+      <div style={{
+        padding: '16px 20px',
+        background: 'var(--surface-elevated)',
+        borderTop: '1px solid var(--border)',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+      }}>
+        <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+          Total cells filled: <span style={{ color: 'var(--text)' }}>{totalFilled}</span> / {INTERVALS_PER_DAY * behaviors.length}
+          {hasChanges && <span style={{ marginLeft: '8px', color: '#f59e0b' }}>(unsaved changes)</span>}
         </div>
-        <div className="flex gap-2">
+        <div style={{ display: 'flex', gap: '8px' }}>
           <button
             onClick={clearAll}
-            className="px-4 py-2 text-sm border border-gray-300 rounded hover:bg-gray-100"
+            style={{
+              padding: '8px 16px',
+              border: '1px solid var(--border)',
+              borderRadius: '6px',
+              background: 'var(--surface)',
+              fontSize: '13px',
+              cursor: 'pointer',
+              color: 'var(--text)',
+            }}
           >
             Clear All
           </button>
           <button
             onClick={handleSave}
             disabled={saving || !hasChanges}
-            className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{
+              padding: '8px 16px',
+              border: 'none',
+              borderRadius: '6px',
+              background: saving || !hasChanges ? 'var(--border)' : 'var(--primary)',
+              color: saving || !hasChanges ? 'var(--text-muted)' : 'var(--bg)',
+              fontSize: '13px',
+              fontWeight: 500,
+              cursor: saving || !hasChanges ? 'not-allowed' : 'pointer',
+            }}
           >
             {saving ? 'Saving...' : 'Save'}
           </button>

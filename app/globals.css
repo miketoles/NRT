@@ -1,8 +1,253 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* ============================================
+   NRT Platform - Theme System
+
+   Themes available:
+   - simple-light (default) - Day mode
+   - simple-dark - Night mode
+   - alpine-light
+   - alpine-dark
+
+   To add a new theme:
+   1. Add [data-theme="theme-name"] section below
+   2. Add theme to ThemeProvider options
+   ============================================ */
+
+/* ============================================
+   SIMPLE THEME - Clean, minimal, maximum readability
+   Grid cells are ALWAYS white with black text
+   ============================================ */
+
+/* Simple Light Theme (Day Mode) */
+[data-theme="simple-light"] {
+  /* Core colors */
+  --bg: #FFFFFF;
+  --surface: #FFFFFF;
+  --surface-elevated: #F5F5F5;
+  --border: #E0E0E0;
+  --stone: #CCCCCC;
+
+  /* Brand colors */
+  --primary: #2563EB;
+  --primary-light: #3B82F6;
+  --secondary: #6B7280;
+  --secondary-light: #9CA3AF;
+
+  /* Text */
+  --text: #1A1A1A;
+  --text-muted: #666666;
+  --slate: #666666;
+
+  /* Accents */
+  --snow: #FFFFFF;
+  --mist: #F5F5F5;
+  --accent: #1D4ED8;
+
+  /* Semantic colors */
+  --success: #16A34A;
+  --success-bg: #DCFCE7;
+  --warning: #CA8A04;
+  --warning-bg: #FEF9C3;
+  --danger: #DC2626;
+  --danger-bg: #FEE2E2;
+
+  /* Scatterplot specific - ALWAYS white cells with black text */
+  --grid-cell-bg: #FFFFFF;
+  --grid-cell-hover: #F5F5F5;
+  --grid-cell-border: #CCCCCC;
+  --grid-header-bg: #F5F5F5;
+  --grid-time-bg: #F5F5F5;
+  --grid-time-text: #666666;
+  --grid-shaded-bg: #E5E5E5;
+  --grid-shaded-pattern: #888888;
+  --grid-text: #1A1A1A;
+
+  /* Background gradient (none for simple) */
+  --bg-gradient: none;
+
+  /* Focus ring */
+  --focus-ring: rgba(37, 99, 235, 0.15);
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+
+  /* Tailwind overrides */
+  --background: var(--bg);
+  --foreground: var(--text);
+}
+
+/* Simple Dark Theme (Night Mode) - Default for development */
+:root,
+[data-theme="simple-dark"] {
+  /* Core colors */
+  --bg: #0A0A0A;
+  --surface: #141414;
+  --surface-elevated: #1F1F1F;
+  --border: #2A2A2A;
+  --stone: #404040;
+
+  /* Brand colors */
+  --primary: #3B82F6;
+  --primary-light: #60A5FA;
+  --secondary: #9CA3AF;
+  --secondary-light: #D1D5DB;
+
+  /* Text */
+  --text: #F5F5F5;
+  --text-muted: #999999;
+  --slate: #999999;
+
+  /* Accents */
+  --snow: #F5F5F5;
+  --mist: #1F1F1F;
+  --accent: #60A5FA;
+
+  /* Semantic colors */
+  --success: #22C55E;
+  --success-bg: rgba(34, 197, 94, 0.15);
+  --warning: #EAB308;
+  --warning-bg: rgba(234, 179, 8, 0.15);
+  --danger: #EF4444;
+  --danger-bg: rgba(239, 68, 68, 0.15);
+
+  /* Scatterplot specific - ALWAYS white cells with black text for readability */
+  --grid-cell-bg: #FFFFFF;
+  --grid-cell-hover: #F5F5F5;
+  --grid-cell-border: #CCCCCC;
+  --grid-header-bg: #1F1F1F;
+  --grid-time-bg: #141414;
+  --grid-time-text: #999999;
+  --grid-shaded-bg: #E5E5E5;
+  --grid-shaded-pattern: #888888;
+  --grid-text: #1A1A1A;
+
+  /* Background gradient (subtle) */
+  --bg-gradient: none;
+
+  /* Focus ring */
+  --focus-ring: rgba(59, 130, 246, 0.2);
+
+  /* Shadows (darker for dark mode) */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.5);
+}
+
+/* ============================================
+   ALPINE THEME - Soft, mountain-inspired
+   ============================================ */
+
+/* Alpine Light Theme */
+[data-theme="alpine-light"] {
+  /* Core colors */
+  --bg: #F8FAFC;
+  --surface: #FFFFFF;
+  --surface-elevated: #F0F4F8;
+  --border: #E0E8F0;
+  --stone: #C0C8D0;
+
+  /* Brand colors */
+  --primary: #5070A0;
+  --primary-light: #6080B0;
+  --secondary: #7890A8;
+  --secondary-light: #88A0B8;
+
+  /* Text */
+  --text: #2A3540;
+  --text-muted: #607080;
+  --slate: #607080;
+
+  /* Accents */
+  --snow: #FAFCFF;
+  --mist: #E8ECF0;
+  --accent: #385878;
+
+  /* Semantic colors */
+  --success: #22c55e;
+  --success-bg: rgba(34, 197, 94, 0.1);
+  --warning: #f59e0b;
+  --warning-bg: rgba(245, 158, 11, 0.1);
+  --danger: #ef4444;
+  --danger-bg: rgba(239, 68, 68, 0.1);
+
+  /* Scatterplot specific */
+  --grid-cell-bg: #FFFFFF;
+  --grid-cell-hover: #F0F4F8;
+  --grid-header-bg: #F0F4F8;
+  --grid-time-bg: #F8FAFC;
+  --grid-shaded-bg: #E0E8F0;
+  --grid-shaded-pattern: #8898A8;
+
+  /* Background gradient (subtle) */
+  --bg-gradient: radial-gradient(ellipse at 50% 0%, rgba(80, 112, 160, 0.04) 0%, transparent 50%);
+
+  /* Focus ring */
+  --focus-ring: rgba(80, 112, 160, 0.15);
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(42, 53, 64, 0.05);
+  --shadow-md: 0 4px 6px rgba(42, 53, 64, 0.07);
+  --shadow-lg: 0 10px 15px rgba(42, 53, 64, 0.1);
+
+  /* Tailwind overrides */
+  --background: var(--bg);
+  --foreground: var(--text);
+}
+
+/* Alpine Dark Theme */
+[data-theme="alpine-dark"] {
+  /* Core colors */
+  --bg: #0C1018;
+  --surface: #141C24;
+  --surface-elevated: #1C2830;
+  --border: #2A3844;
+  --stone: #404C58;
+
+  /* Brand colors */
+  --primary: #90B0D0;
+  --primary-light: #A8C0E0;
+  --secondary: #6080A0;
+  --secondary-light: #7090B0;
+
+  /* Text */
+  --text: #E8EEF4;
+  --text-muted: #8898A8;
+  --slate: #8898A8;
+
+  /* Accents */
+  --snow: #E8EEF4;
+  --mist: #C0D0E0;
+  --accent: #B0C8E0;
+
+  /* Semantic colors */
+  --success: #4ade80;
+  --success-bg: rgba(74, 222, 128, 0.1);
+  --warning: #fbbf24;
+  --warning-bg: rgba(251, 191, 36, 0.1);
+  --danger: #f87171;
+  --danger-bg: rgba(248, 113, 113, 0.1);
+
+  /* Scatterplot specific */
+  --grid-cell-bg: var(--surface);
+  --grid-cell-hover: var(--surface-elevated);
+  --grid-header-bg: var(--surface-elevated);
+  --grid-time-bg: var(--bg);
+  --grid-shaded-bg: var(--surface-elevated);
+  --grid-shaded-pattern: #666666;
+
+  /* Background gradient (subtle glow) */
+  --bg-gradient: radial-gradient(ellipse at 50% 0%, rgba(144, 176, 208, 0.06) 0%, transparent 50%);
+
+  /* Focus ring */
+  --focus-ring: rgba(144, 176, 208, 0.15);
+
+  /* Shadows (darker for dark mode) */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.4);
 }
 
 @theme inline {
@@ -12,15 +257,121 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
 
+html,
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  background-image: var(--bg-gradient);
+  color: var(--text);
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+  color: var(--text);
+  font-weight: 500;
+}
+
+p {
+  color: var(--text-muted);
+}
+
+a {
+  color: var(--primary);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+a:hover {
+  color: var(--primary-light);
+}
+
+/* Form Elements */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="date"],
+input[type="number"],
+select,
+textarea {
+  padding: 0.625rem 0.875rem;
+  border: 1px solid var(--border) !important;
+  border-radius: 6px !important;
+  background: var(--bg) !important;
+  color: var(--text) !important;
+  font-size: 0.875rem;
+  font-family: inherit;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none !important;
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px var(--focus-ring) !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
+/* Buttons base styles */
+button {
+  font-family: inherit;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--stone);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--slate);
+}
+
+/* Selection */
+::selection {
+  background: var(--primary);
+  color: white;
+}
+
+/* Utility classes for theme-aware colors */
+.bg-surface {
+  background: var(--surface);
+}
+
+.bg-elevated {
+  background: var(--surface-elevated);
+}
+
+.text-primary {
+  color: var(--primary);
+}
+
+.text-muted {
+  color: var(--text-muted);
+}
+
+.border-theme {
+  border-color: var(--border);
 }
