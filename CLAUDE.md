@@ -8,7 +8,7 @@
 **Purpose:** Bespoke ABA data platform for Craig Hospital's unique TBI patient population
 **Status:** Active Development - Phase 1 (Scatterplot Quick Win)
 **Path:** `~/dev/NRT`
-**GitHub:** https://github.com/miketoles/CR (will rename to NRT)
+**GitHub:** https://github.com/miketoles/NRT (will rename to NRT)
 
 ---
 
