@@ -1,0 +1,87 @@
+// Scatterplot Data Platform - Prisma Schema
+// Supports SQLite (dev) and PostgreSQL/SQL Server (production)
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// User accounts (BCBAs, RBTs, Admins)
+model User {
+  id        String    @id @default(uuid())
+  email     String    @unique
+  name      String
+  password  String    // bcrypt hashed
+  role      String    @default("RBT") // RBT, BCBA, ADMIN
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  sessions  Session[]
+}
+
+// Clients (patients) being tracked
+model Client {
+  id         String     @id @default(uuid())
+  name       String
+  identifier String?    // MRN or internal ID
+  notes      String?
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  archivedAt DateTime?
+  behaviors  Behavior[]
+  sessions   Session[]
+}
+
+// Behaviors being tracked per client
+model Behavior {
+  id          String     @id @default(uuid())
+  client      Client     @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientId    String
+  name        String     // e.g., "Aggression", "Elopement"
+  description String?
+  color       String?    // UI color for charts
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  archivedAt  DateTime?
+  intervals   Interval[]
+
+  @@index([clientId])
+}
+
+// A data entry session (one day for one client)
+model Session {
+  id          String     @id @default(uuid())
+  client      Client     @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientId    String
+  sessionDate DateTime   // The date of observation
+  enteredBy   User       @relation(fields: [userId], references: [id])
+  userId      String
+  notes       String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  intervals   Interval[]
+
+  @@unique([clientId, sessionDate])
+  @@index([clientId])
+  @@index([userId])
+  @@index([sessionDate])
+}
+
+// Individual interval data (96 intervals per day per behavior)
+model Interval {
+  id            String   @id @default(uuid())
+  session       Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sessionId     String
+  behavior      Behavior @relation(fields: [behaviorId], references: [id], onDelete: Cascade)
+  behaviorId    String
+  intervalIndex Int      // 0-95 (96 intervals per day, 15-min each)
+  value         String   // 'ind' (independent), 'err' (error/prompted), 'skip' (not observed)
+
+  @@unique([sessionId, behaviorId, intervalIndex])
+  @@index([sessionId])
+  @@index([behaviorId])
+}
